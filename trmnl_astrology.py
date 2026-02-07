@@ -73,24 +73,42 @@ def get_current_chart():
 
 def svg_to_png_base64(svg_content):
     """Convert SVG to PNG and encode as base64"""
-    print("Converting SVG to PNG...")
+    print("Converting SVG to PNG for e-ink display...")
     
     try:
         import cairosvg
+        from PIL import Image
+        import io
     except ImportError:
-        print("Installing cairosvg...")
-        os.system(f"{sys.executable} -m pip install cairosvg")
+        print("Installing required packages...")
+        os.system(f"{sys.executable} -m pip install cairosvg pillow")
         import cairosvg
+        from PIL import Image
+        import io
     
-    # Convert SVG to PNG (800x480 for TRMNL e-ink display)
+    # Convert SVG to PNG at full size first
     png_data = cairosvg.svg2png(
         bytestring=svg_content.encode('utf-8'),
         output_width=800,
         output_height=480
     )
     
+    # Open with PIL
+    img = Image.open(io.BytesIO(png_data))
+    
+    # Convert to pure black and white (1-bit) for e-ink display
+    img = img.convert('L')  # Convert to grayscale first
+    img = img.point(lambda x: 0 if x < 128 else 255, '1')  # Convert to 1-bit B&W
+    
+    # Save with maximum compression
+    output = io.BytesIO()
+    img.save(output, format='PNG', optimize=True)
+    compressed_png = output.getvalue()
+    
     # Encode as base64
-    base64_png = base64.b64encode(png_data).decode('utf-8')
+    base64_png = base64.b64encode(compressed_png).decode('utf-8')
+    
+    print(f"PNG size: {len(compressed_png)} bytes, Base64 size: {len(base64_png)} bytes")
     
     return base64_png
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-TRMNL Astrology Transit Chart Updater
-Fetches hourly transit charts from self-hosted Astrologer API and sends to TRMNL
+TRMNL Astrology Current Chart Updater
+Fetches current planetary positions for Philadelphia and sends to TRMNL
 """
 
 import os
@@ -19,42 +19,44 @@ PLUGIN_UUID = os.environ.get('PLUGIN_UUID')
 # TRMNL webhook endpoint
 TRMNL_WEBHOOK_URL = f"https://usetrmnl.com/api/custom_plugins/{PLUGIN_UUID}"
 
-# Transit chart request payload
-TRANSIT_PAYLOAD = {
+# Current chart request payload (Philadelphia)
+CHART_PAYLOAD = {
     "subject": {
-        "name": "Current Transits",
+        "name": "Philadelphia Now",
         "year": None,  # Will be set dynamically
         "month": None,
         "day": None,
         "hour": None,
         "minute": None,
-        "city": "London",
-        "nation": "GB",
-        "longitude": -0.1278,
-        "latitude": 51.5074,
-        "timezone": "Europe/London"
+        "city": "Philadelphia",
+        "nation": "US",
+        "longitude": -75.1652,
+        "latitude": 39.9526,
+        "timezone": "America/New_York"
     }
 }
 
 
-def get_current_transit_chart():
-    """Fetch current transit chart from Astrologer API"""
-    print("Fetching current transit chart...")
+def get_current_chart():
+    """Fetch current planetary positions chart from Astrologer API"""
+    print("Fetching current planetary positions for Philadelphia...")
     
     # Get current time
     now = datetime.now()
     
     # Update payload with current time
-    TRANSIT_PAYLOAD["subject"]["year"] = now.year
-    TRANSIT_PAYLOAD["subject"]["month"] = now.month
-    TRANSIT_PAYLOAD["subject"]["day"] = now.day
-    TRANSIT_PAYLOAD["subject"]["hour"] = now.hour
-    TRANSIT_PAYLOAD["subject"]["minute"] = now.minute
+    CHART_PAYLOAD["subject"]["year"] = now.year
+    CHART_PAYLOAD["subject"]["month"] = now.month
+    CHART_PAYLOAD["subject"]["day"] = now.day
+    CHART_PAYLOAD["subject"]["hour"] = now.hour
+    CHART_PAYLOAD["subject"]["minute"] = now.minute
     
-    # Call Astrologer API
+    print(f"Time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Call Astrologer API (using birth-chart endpoint for current positions)
     response = requests.post(
-        f"{ASTROLOGER_API_URL}/api/v5/chart/transit",
-        json=TRANSIT_PAYLOAD,
+        f"{ASTROLOGER_API_URL}/api/v5/chart/birth-chart",
+        json=CHART_PAYLOAD,
         timeout=30
     )
     
@@ -100,7 +102,7 @@ def send_to_trmnl(image_base64):
     payload = {
         "merge_variables": {
             "transit_chart": image_base64,
-            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M UTC")
+            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M EST")
         }
     }
     
@@ -134,8 +136,8 @@ def main():
         sys.exit(1)
     
     try:
-        # Step 1: Get transit chart SVG
-        svg_chart = get_current_transit_chart()
+        # Step 1: Get current chart SVG
+        svg_chart = get_current_chart()
         
         # Step 2: Convert to PNG and encode
         png_base64 = svg_to_png_base64(svg_chart)

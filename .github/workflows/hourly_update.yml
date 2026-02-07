@@ -1,0 +1,34 @@
+name: Update TRMNL Transit Chart
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  update-chart:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install requests cairosvg
+      
+      - name: Update TRMNL chart
+        env:
+          ASTROLOGER_API_URL: ${{ secrets.ASTROLOGER_API_URL }}
+          TRMNL_API_KEY: ${{ secrets.TRMNL_API_KEY }}
+          PLUGIN_UUID: ${{ secrets.PLUGIN_UUID }}
+        run: |
+          python trmnl_astrology.py

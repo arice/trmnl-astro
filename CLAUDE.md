@@ -9,36 +9,42 @@ This is a TRMNL e-ink display integration that shows astrological charts. It fet
 ## Architecture
 
 ```
-GitHub Actions (every 15 min)
+GitHub Actions (every 5 min)
     ↓
 trmnl_astrology.py
     ├── Calls Astrologer API /api/v5/chart-data/birth-chart → Gets JSON position data
-    ├── render_chart_svg() → Custom wheel + legend SVG (800x480)
-    ├── svg_to_png_bw() → Converts to B&W PNG for e-ink
-    ├── Saves to docs/chart.png
-    └── Sends webhook to TRMNL with GitHub Pages URL
+    ├── renderers/production.py → Production chart SVG (800x480)
+    ├── renderers/dev.py → Development chart SVG (for iteration)
+    ├── svg_to_png_grayscale() → Converts to 4-level grayscale PNG for e-ink
+    ├── Saves to docs/chart.png (production) + docs/dev-chart.png (dev)
+    └── Sends webhook to TRMNL with production chart URL
     ↓
-Git commits & pushes docs/chart.png
+Git commits & pushes both charts
     ↓
-GitHub Pages serves chart.png
+GitHub Pages serves both charts
     ↓
-TRMNL fetches and displays image
+TRMNL fetches and displays production chart
 ```
 
 ## Key Files
 
-- `trmnl_astrology.py` - Main script: fetches positions, renders chart, sends webhook
-- `.github/workflows/hourly_update.yml` - GitHub Actions workflow (runs every 15 minutes)
-- `docs/chart.png` - Output image served via GitHub Pages
+- `trmnl_astrology.py` - Main script: fetches positions, renders both charts, sends webhook
+- `renderers/` - Chart rendering modules
+  - `base.py` - Shared glyphs, colors, and utilities
+  - `production.py` - Stable production renderer (used by TRMNL)
+  - `dev.py` - Development sandbox for iterating on new designs
+- `.github/workflows/hourly_update.yml` - GitHub Actions workflow (runs every 5 minutes)
+- `docs/chart.png` - Production image served via GitHub Pages
+- `docs/dev-chart.png` - Development image for iteration (also on GitHub Pages)
 - `test_chart.py` - Local testing with mock data (run in venv)
 
 ## Chart Rendering Details
 
-The `render_chart_svg()` function creates a custom astrological wheel:
+The renderers create custom astrological wheel charts:
 
 **Layout (800x480):**
 - Left side: Zodiac wheel (center at 220, 240)
-- Right side: Legend panel with all 14 bodies + degrees
+- Right side: Legend panel with all 13 bodies + degrees
 
 **Wheel structure:**
 - `outer_r` (175): Outer edge of sign ring
@@ -62,15 +68,27 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
-pip install requests cairosvg pillow svgwrite
+pip install requests cairosvg pillow svgwrite pyyaml
 
 # Run test with mock data (no API needed)
 python test_chart.py
-open test_chart.png
+open test_chart_prod.png test_chart_dev.png
 
 # Note: Astrological glyphs may show as squares locally
 # unless you install Noto Sans Symbols 2 font
 ```
+
+## Development Workflow
+
+To iterate on chart designs without affecting production:
+
+1. Edit `renderers/dev.py` - this is your sandbox
+2. Run `python test_chart.py` to generate both charts locally
+3. Compare `test_chart_prod.png` (production) with `test_chart_dev.png` (your changes)
+4. When happy, copy your changes from `dev.py` to `production.py`
+
+The dev chart is also published to GitHub Pages at:
+`https://<username>.github.io/<repo>/dev-chart.png`
 
 ## Required GitHub Secrets
 

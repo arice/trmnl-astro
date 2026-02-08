@@ -139,8 +139,7 @@ def render(positions, config):
         combined_label = f"{BODY_GLYPHS[body]} {deg}°"
         dwg.add(dwg.text(combined_label, insert=(px, py + 6),
                         text_anchor='middle', font_size='16px',
-                        font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
-                        font_weight='bold'))
+                        font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
     # Draw ASC tick on outer ring
     if 'ascendant' in positions:

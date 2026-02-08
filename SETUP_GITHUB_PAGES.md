@@ -1,7 +1,5 @@
 # TRMNL Astrology Setup - GitHub Pages Solution
 
-## Simple, secure, free. No SSH keys, no upload endpoints.
-
 ---
 
 ## Setup Steps

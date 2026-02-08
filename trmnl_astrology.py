@@ -53,10 +53,10 @@ BODY_GLYPHS = {
     'uranus': '\u2645',     # ♅
     'neptune': '\u2646',    # ♆
     'pluto': '\u2647',      # ♇
-    'mean_node': '\u260A',  # ☊ (North Node)
-    'mean_south_node': '\u260B',  # ☋ (South Node)
-    'asc': 'ASC',
-    'mc': 'MC'
+    'mean_north_lunar_node': '\u260A',  # ☊ (North Node)
+    'mean_south_lunar_node': '\u260B',  # ☋ (South Node)
+    'ascendant': 'ASC',
+    'medium_coeli': 'MC'
 }
 
 SIGN_GLYPHS = [
@@ -75,15 +75,16 @@ SIGN_GLYPHS = [
 ]
 
 # Bodies to display (in order for legend)
+# API field names -> display names
 BODIES = [
     'sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter',
-    'saturn', 'uranus', 'neptune', 'pluto', 'mean_node',
-    'mean_south_node', 'asc', 'mc'
+    'saturn', 'uranus', 'neptune', 'pluto', 'mean_north_lunar_node',
+    'mean_south_lunar_node', 'ascendant', 'medium_coeli'
 ]
 
 
 def get_positions():
-    """Fetch position data from Astrologer API /api/v4/birth-data endpoint"""
+    """Fetch position data from Astrologer API /api/v5/chart-data/birth-chart endpoint"""
     print("Fetching current planetary positions for Philadelphia...")
 
     now = datetime.now()
@@ -97,7 +98,7 @@ def get_positions():
     print(f"Time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
 
     response = requests.post(
-        f"{ASTROLOGER_API_URL}/api/v4/birth-data",
+        f"{ASTROLOGER_API_URL}/api/v5/chart-data/birth-chart",
         json=CHART_PAYLOAD,
         timeout=30
     )
@@ -110,22 +111,23 @@ def get_positions():
     if data.get("status") != "OK":
         raise Exception(f"Position fetch failed: {data}")
 
-    # Extract position data for each body
+    # Extract position data from chart_data.subject
     positions = {}
-    body_data = data["data"]
+    subject = data["chart_data"]["subject"]
 
     for body in BODIES:
-        if body in body_data:
-            pos = body_data[body]
+        if body in subject and subject[body] is not None:
+            pos = subject[body]
             abs_pos = pos.get('abs_pos', 0)
-            sign_num = int(abs_pos // 30)  # 0-11 for signs
-            deg_in_sign = abs_pos % 30
+            sign_num = pos.get('sign_num', int(abs_pos // 30))
+            position_in_sign = pos.get('position', abs_pos % 30)
 
             positions[body] = {
                 'lon': abs_pos,
                 'sign': sign_num,
-                'deg': int(deg_in_sign),
-                'min': int((deg_in_sign % 1) * 60)
+                'deg': int(position_in_sign),
+                'min': int((position_in_sign % 1) * 60),
+                'retrograde': pos.get('retrograde', False)
             }
 
     print(f"Retrieved positions for {len(positions)} bodies")
@@ -187,7 +189,7 @@ def render_chart_svg(positions):
     # Collect positions to handle collisions
     planet_positions = []
     for body in BODIES:
-        if body in positions and body not in ['asc', 'mc']:
+        if body in positions and body not in ['ascendant', 'medium_coeli']:
             lon = positions[body]['lon']
             planet_positions.append((body, lon))
 
@@ -217,8 +219,8 @@ def render_chart_svg(positions):
                         font_weight='bold'))
 
     # Draw ASC line (thicker, extends from center)
-    if 'asc' in positions:
-        asc_lon = positions['asc']['lon']
+    if 'ascendant' in positions:
+        asc_lon = positions['ascendant']['lon']
         asc_rad = math.radians(asc_lon)
         ax = wheel_cx + outer_r * math.cos(asc_rad)
         ay = wheel_cy - outer_r * math.sin(asc_rad)
@@ -233,8 +235,8 @@ def render_chart_svg(positions):
                         font_weight='bold'))
 
     # Draw MC line
-    if 'mc' in positions:
-        mc_lon = positions['mc']['lon']
+    if 'medium_coeli' in positions:
+        mc_lon = positions['medium_coeli']['lon']
         mc_rad = math.radians(mc_lon)
         mx = wheel_cx + outer_r * math.cos(mc_rad)
         my = wheel_cy - outer_r * math.sin(mc_rad)

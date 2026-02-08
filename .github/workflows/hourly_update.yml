@@ -47,14 +47,3 @@ jobs:
           git add docs/chart.png docs/dev-chart.png
           git diff --quiet && git diff --staged --quiet || git commit -m "Update chart: $(date '+%Y-%m-%d %H:%M UTC')"
           git push
-
-      - name: Trigger TRMNL display refresh
-        env:
-          TRMNL_API_KEY: ${{ secrets.TRMNL_API_KEY }}
-        run: |
-          echo "Waiting for GitHub Pages to deploy..."
-          sleep 10
-          echo "Triggering display refresh..."
-          curl -s https://usetrmnl.com/api/display --header "access-token:$TRMNL_API_KEY"
-          echo ""
-          echo "Display refresh triggered!"

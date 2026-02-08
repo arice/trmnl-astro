@@ -148,13 +148,13 @@ def render_chart_svg(positions):
 
     # === LEFT SIDE: Zodiac Wheel ===
     wheel_cx, wheel_cy = 240, 240
-    outer_r = 210          # Outer edge of sign ring
-    inner_r = 180          # Inner edge of sign ring (main wheel boundary)
-    sign_glyph_r = 195     # Sign glyphs centered in the ring
-    planet_r = 150         # Planet glyphs inside the wheel
-    degree_r = 105         # Degree labels closer to center
-    tick_outer = inner_r   # Ticks touch inner ring
-    tick_inner = inner_r - 15
+    outer_r = 200          # Outer edge of sign ring
+    inner_r = 175          # Inner edge of sign ring (main wheel boundary)
+    sign_glyph_r = 188     # Sign glyphs centered in the ring
+    planet_r = 140         # Planet glyphs inside the wheel
+    degree_r = 225         # Degree labels OUTSIDE the wheel
+    tick_outer = outer_r + 3  # Ticks extend slightly past outer ring
+    tick_inner = inner_r
 
     # Calculate rotation so Ascendant is at 9 o'clock (180° screen angle)
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
@@ -183,7 +183,7 @@ def render_chart_svg(positions):
         y2 = wheel_cy - outer_r * math.sin(angle_rad)
 
         dwg.add(dwg.line(start=(x1, y1), end=(x2, y2),
-                        stroke='gray', stroke_width=1))
+                        stroke='black', stroke_width=1))
 
         # Sign glyph centered in the narrow ring
         mid_angle_rad = to_screen_angle(i * 30 + 15)
@@ -260,9 +260,9 @@ def render_chart_svg(positions):
         ay = wheel_cy - outer_r * math.sin(asc_rad)
         dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(ax, ay),
                         stroke='black', stroke_width=2))
-        # ASC label outside the outer ring
-        label_x = wheel_cx + (outer_r + 12) * math.cos(asc_rad)
-        label_y = wheel_cy - (outer_r + 12) * math.sin(asc_rad)
+        # ASC label outside the wheel
+        label_x = wheel_cx + (degree_r + 12) * math.cos(asc_rad)
+        label_y = wheel_cy - (degree_r + 12) * math.sin(asc_rad)
         dwg.add(dwg.text('ASC', insert=(label_x, label_y + 4),
                         text_anchor='middle', font_size='11px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black',
@@ -275,8 +275,8 @@ def render_chart_svg(positions):
         my = wheel_cy - outer_r * math.sin(mc_rad)
         dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(mx, my),
                         stroke='black', stroke_width=2, stroke_dasharray='5,3'))
-        label_x = wheel_cx + (outer_r + 12) * math.cos(mc_rad)
-        label_y = wheel_cy - (outer_r + 12) * math.sin(mc_rad)
+        label_x = wheel_cx + (degree_r + 12) * math.cos(mc_rad)
+        label_y = wheel_cy - (degree_r + 12) * math.sin(mc_rad)
         dwg.add(dwg.text('MC', insert=(label_x, label_y + 4),
                         text_anchor='middle', font_size='11px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black',

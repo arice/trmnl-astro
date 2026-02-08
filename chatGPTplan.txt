@@ -1,0 +1,283 @@
+PLAN.md — TRMNL Astrology Snapshot (Kerykeion data → custom chart → TRMNL-ready image)
+
+Purpose
+Build a TRMNL-friendly, high-readability astrology snapshot. Use Kerykeion Astrologer API for position data only. Render a custom chart image that fits 800×480 (1-bit), includes glyphs, and stays legible on an e-ink display.
+
+Non-negotiable display requirements
+- Must include planet and sign glyphs.
+- Must include: Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto (10 planets).
+- Must also include the lunar nodes: North Node and South Node (2 additional points).
+- Must show degree (and minutes) for each of the above bodies.
+- Must show ASC and MC with sign glyph and degree (and minutes).
+
+Assumptions / uncertainties (explicit)
+- “Nodes” = Mean North Node and Mean South Node, unless Kerykeion provides True Node; if True Node is present, prefer True Node. If only one node is provided, compute the opposite node as (lon + 180) % 360.
+- Kerykeion provides ecliptic longitude in degrees for each body, plus ASC and MC (or enough house cusp data to treat cusp 1 as ASC and cusp 10 as MC).
+- TRMNL screen target is 800×480, monochrome; small text is acceptable only in a structured legend; wheel labels must be minimal.
+
+High-level approach
+1) Fetch position data (JSON) from the first-party Kerykeion Astrologer API.
+2) Normalize into a canonical data model with derived sign + in-sign degree/minutes strings.
+3) Render a self-contained SVG (embedded glyph-capable font recommended).
+4) Rasterize SVG to 800×480 PNG.
+5) Convert to TRMNL-optimized 1-bit PNG (threshold tuned for crisp glyphs and text).
+6) Validate output (dimensions + required rows/glyphs/degree strings).
+
+Milestones
+M1: API client returns stable JSON → canonical model (with derived sign/degree strings).
+M2: SVG render of wheel + legend meets “all bodies + degrees + ASC/MC” requirement.
+M3: PNG pipeline produces crisp TRMNL-ready 1-bit output.
+M4: Automated checks: presence of all rows + valid formatting + correct dimensions.
+
+--------------------------------------------------------------------
+1. Data acquisition (Kerykeion Astrologer API)
+
+Goal
+Obtain only the position data needed to render (no chart image from Kerykeion).
+
+Action
+- Read: https://www.kerykeion.net/content/docs/astrologer-api
+- Implement an API client pointing to: https://kyosaku.net:27391 (first-party instance)
+
+Deliverable
+- src/kerykeion_client.ts (or .js)
+- A single function:
+  - fetchPositions(payload) -> raw JSON
+
+Payload minimum
+- name (optional)
+- date/time
+- timezone
+- location (lat/lon)
+- house system (optional, defaults ok)
+
+Note
+If API supports an endpoint that returns the “astrological subject” or “positions,” use that. Do not request any Kerykeion chart image endpoints.
+
+--------------------------------------------------------------------
+2. Canonical model (normalize + derive sign/degree strings)
+
+Goal
+Create a deterministic internal representation that makes rendering trivial.
+
+File
+- src/model.ts
+
+Canonical types
+- BodyKey (enum):
+  - sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto,
+  - north_node, south_node,
+  - asc, mc
+
+- BodyPosition:
+  - key: BodyKey
+  - lon_deg: number  (0–360)
+  - sign_index: number (0–11, Aries=0)
+  - deg_in_sign: number (0–29)
+  - min_in_sign: number (0–59)
+  - angle_rad: number (for wheel placement)
+  - glyph: string (planet/node glyph or label glyph)
+  - sign_glyph: string
+  - degree_str: string   e.g., "14°23′"
+  - compact_str: string  e.g., "☉ ♒︎ 14°23′"
+
+Derivation math (must be consistent)
+- normalize360(x) = ((x % 360) + 360) % 360
+- sign_index = floor(lon_deg / 30)
+- deg_float_in_sign = lon_deg % 30
+- deg_in_sign = floor(deg_float_in_sign)
+- min_in_sign = floor((deg_float_in_sign - deg_in_sign) * 60 + 1e-9)
+- angle_rad = (lon_deg - 90) * (pi/180)   // rotate so 0° Aries starts at top, adjust if you prefer
+
+Sign glyph mapping (index→glyph)
+0 ♈︎, 1 ♉︎, 2 ♊︎, 3 ♋︎, 4 ♌︎, 5 ♍︎, 6 ♎︎, 7 ♏︎, 8 ♐︎, 9 ♑︎, 10 ♒︎, 11 ♓︎
+
+Body glyph mapping
+- Sun ☉
+- Moon ☽ (or ☾, pick one and use consistently)
+- Mercury ☿
+- Venus ♀
+- Mars ♂
+- Jupiter ♃
+- Saturn ♄
+- Uranus ♅
+- Neptune ♆
+- Pluto ♇
+- North Node ☊
+- South Node ☋
+ASC/MC glyph/labels
+- For ASC and MC, use labels "ASC" and "MC" (text), plus sign glyph and degree string.
+
+Node handling logic
+- Prefer True Node if API supplies it; else Mean Node.
+- If only North Node is provided:
+  - South Node = normalize360(North + 180)
+- If only South Node is provided:
+  - North Node = normalize360(South + 180)
+- If both provided, trust API.
+
+Deliverables
+- src/normalize.ts (normalize360 + derivations)
+- src/extract_positions.ts (map raw API JSON → BodyPosition[])
+- out/natal.model.json (debug dump)
+
+--------------------------------------------------------------------
+3. Rendering strategy (wheel + legend; legend carries all degrees)
+
+Rationale
+Perimeter labels with degrees will collide at 800×480. Use a wheel for the “feel” and a right-side legend for guaranteed readability.
+
+Layout
+- Canvas: 800×480
+- Wheel on left
+  - center: (260, 240)
+  - main radius: 185
+  - ring stroke: 2px
+- Legend on right
+  - panel x: 500..790
+  - 14 rows total: 10 planets + 2 nodes + ASC + MC
+  - each row shows: [body glyph or label] [sign glyph] [degree_str]
+
+Wheel content
+- Draw outer ring.
+- Optionally draw 12 sign ticks (every 30°) and/or subtle sign glyphs on ring (only if it stays readable).
+- For each body (planets + nodes):
+  - draw a short radial tick at its longitude
+  - place body glyph just outside the ring at radius (R + 18)
+  - do NOT place degree text on the wheel (degree text stays in legend)
+
+Collision handling for wheel glyphs
+- Compute glyph bounding boxes (approx via font size) and detect overlaps.
+- If overlap:
+  - nudge outward by +10px steps (max R + 55)
+  - if still overlapping: allow a thin connector line from tick to glyph
+
+Legend formatting (readability first)
+- Row order (suggested):
+  - ☉ ☽ ☿ ♀ ♂ ♃ ♄ ♅ ♆ ♇ ☊ ☋ ASC MC
+- Each row:
+  - left column: glyph/label (bigger)
+  - middle: sign glyph (bigger)
+  - right: degree string (slightly smaller)
+- Font sizes:
+  - glyph/sign: 26px
+  - degree text: 20px
+  - labels (ASC/MC): 18–20px bold-ish if available
+
+--------------------------------------------------------------------
+4. Font strategy (critical risk)
+
+Problem
+Astrology glyphs may not render reliably if the rasterizer substitutes fonts.
+
+Plan A (recommended): embedded font
+- Bundle a known-good font that includes planets + zodiac + nodes.
+- Embed it directly in the SVG using @font-face with a data: URL (base64) so SVG is self-contained.
+- Verify licensing before committing font to repo.
+
+Plan B: Unicode + fallback stack
+- Use Unicode glyphs and specify a robust fallback stack.
+- Accept risk that some environments will render missing glyphs.
+
+Deliverables
+- src/font_embed.ts (if Plan A)
+- src/render_svg.ts must inject font CSS into SVG <style>
+
+--------------------------------------------------------------------
+5. SVG renderer
+
+Goal
+Generate a single, self-contained SVG.
+
+File
+- src/render_svg.ts
+
+Function
+- renderChartSVG(positions: BodyPosition[], options) -> string (SVG markup)
+
+Output
+- out/chart.svg
+
+Notes
+- Use simple primitives: circles, lines, text.
+- Keep strokes thick enough to survive 1-bit conversion.
+- Avoid hairlines and tiny text.
+
+--------------------------------------------------------------------
+6. Rasterization + TRMNL conversion pipeline
+
+Pipeline
+1) SVG → PNG 800×480
+2) PNG → 1-bit PNG optimized for e-ink
+
+Implementation options (choose one based on your stack)
+- Node:
+  - sharp can rasterize SVG and threshold to bilevel
+- CLI utilities:
+  - resvg + pngquant (not 1-bit) + imagemagick for threshold
+- Preferred: a fully scripted, repeatable pipeline in Node.
+
+Defaults tuned for TRMNL
+- Convert to grayscale
+- Apply contrast/levels if needed
+- Apply threshold (start at ~60%, tune after first sample)
+- Output as 1-bit PNG (no dithering initially; add dithering only if needed for thin strokes)
+
+Outputs
+- out/chart_800x480.png
+- out/trmnl_chart.png
+
+Validation checks
+- Dimensions exactly 800×480
+- File is bilevel/1-bit (or at least visually bilevel)
+- Glyphs remain crisp and readable
+
+--------------------------------------------------------------------
+7. CLI / Runner
+
+File
+- src/main.ts
+
+CLI
+- node src/main.ts --date ... --time ... --tz ... --lat ... --lon ...
+- Or read a JSON config file for repeatability.
+
+Flow
+- fetchPositions
+- extract_positions → canonical list
+- renderChartSVG → write out/chart.svg
+- rasterize → out/chart_800x480.png
+- convert → out/trmnl_chart.png
+- validate outputs; exit non-zero on missing bodies/rows
+
+Acceptance tests (automated)
+- Ensure canonical model includes:
+  - 10 planets + 2 nodes + ASC + MC = 14 items
+- Ensure each planet/node has:
+  - glyph present
+  - sign_glyph present
+  - degree_str matches /^\d{1,2}°\d{2}′$/
+- Ensure ASC/MC rows include:
+  - sign_glyph present
+  - degree_str present
+- Ensure final PNG is 800×480
+
+--------------------------------------------------------------------
+8. “Definition of done”
+- Given an API response for a real chart, the pipeline outputs trmnl_chart.png (800×480, crisp) that visibly contains:
+  - all 10 planet glyphs + sign glyphs + degrees
+  - North and South Node glyphs + sign glyphs + degrees
+  - ASC + sign glyph + degree
+  - MC + sign glyph + degree
+- No unreadable overlaps in legend.
+- Wheel glyph overlap handled (nudges/connectors) so symbols remain distinct.
+
+--------------------------------------------------------------------
+9. Immediate next steps (to start coding without back-and-forth)
+1) Implement fetchPositions against kyosaku.net:27391 per Astrologer API docs.
+2) Print raw JSON to confirm where longitudes, ASC, MC, and nodes live.
+3) Implement extract_positions + derivations; dump out/natal.model.json.
+4) Build a minimal SVG (wheel ring + legend text only) and iterate on font choice.
+5) Add rasterize + threshold pipeline; tune threshold for best readability.
+6) Add collision handling for wheel glyphs.
+7) Lock in styling, then add automated validation checks.

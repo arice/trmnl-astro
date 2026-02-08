@@ -10,6 +10,7 @@ import sys
 import math
 import requests
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # Configuration from environment variables
 ASTROLOGER_API_URL = os.environ.get('ASTROLOGER_API_URL')
@@ -87,7 +88,9 @@ def get_positions():
     """Fetch position data from Astrologer API /api/v5/chart-data/birth-chart endpoint"""
     print("Fetching current planetary positions for Philadelphia...")
 
-    now = datetime.now()
+    # Get current time in Philadelphia timezone
+    philly_tz = ZoneInfo("America/New_York")
+    now = datetime.now(philly_tz)
 
     CHART_PAYLOAD["subject"]["year"] = now.year
     CHART_PAYLOAD["subject"]["month"] = now.month
@@ -95,7 +98,7 @@ def get_positions():
     CHART_PAYLOAD["subject"]["hour"] = now.hour
     CHART_PAYLOAD["subject"]["minute"] = now.minute
 
-    print(f"Time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Time (Philadelphia): {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
 
     response = requests.post(
         f"{ASTROLOGER_API_URL}/api/v5/chart-data/birth-chart",
@@ -291,8 +294,9 @@ def render_chart_svg(positions):
 
             y += line_height
 
-    # Timestamp at bottom
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+    # Timestamp at bottom (Philadelphia time)
+    philly_tz = ZoneInfo("America/New_York")
+    timestamp = datetime.now(philly_tz).strftime('%Y-%m-%d %H:%M')
     dwg.add(dwg.text(f'Philadelphia | {timestamp}', insert=(legend_x + 100, 460),
                     text_anchor='middle', font_size='12px',
                     font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))

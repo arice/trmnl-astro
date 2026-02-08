@@ -1,11 +1,11 @@
 """
-Production chart renderer: Outside labels with outward ticks and tighter collision detection.
+Production chart renderer: Outside labels with adaptive collision detection.
 
 Labels placed outside wheel with adaptive layout:
 - Stacked (glyph above, degree below) at top/bottom of wheel
 - Side-by-side on left/right sides of wheel
 - Tick marks point outward toward labels
-- Tighter collision detection (0.08 rad / ~4.5°) for closer label placement
+- Adaptive collision detection: relaxed on sides (0.05 rad), tighter at top/bottom (0.08 rad)
 
 Output: SVG string (800x480)
 """
@@ -111,9 +111,20 @@ def render(positions, config):
             angle_diff = abs(angle - placed_angle)
             if angle_diff > math.pi:
                 angle_diff = 2 * math.pi - angle_diff
-            # Outside labels have more space at larger radii
-            # 0.08 radians ~= 4.5 degrees - allows planets 5°+ apart to share radius
-            if angle_diff < 0.08 and abs(radius - placed_r) < 16:
+
+            # On left/right sides (horizontal zones), labels spread horizontally
+            # so we can allow closer angular spacing at the same radius
+            is_horizontal = abs(math.sin(angle)) < 0.5  # within ~30° of horizontal
+            placed_is_horizontal = abs(math.sin(placed_angle)) < 0.5
+
+            if is_horizontal and placed_is_horizontal:
+                # Both on sides - only collide if very close (< 3°)
+                threshold = 0.05
+            else:
+                # Top/bottom or mixed - need more spacing
+                threshold = 0.08
+
+            if angle_diff < threshold and abs(radius - placed_r) < 16:
                 return True
         return False
 

@@ -56,8 +56,8 @@ def render(positions, config):
     sign_glyph_r = 143
     planet_r = 185     # Labels outside wheel (beyond outer_r)
     max_planet_r = 230 # Maximum outward radius for labels
-    tick_outer = outer_r
-    tick_inner = outer_r - 8
+    tick_inner = outer_r
+    tick_outer = outer_r + 10  # Ticks point outward toward labels
 
     # Calculate rotation so Ascendant is at 9 o'clock
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
@@ -123,9 +123,20 @@ def render(positions, config):
             angle_diff = abs(angle - placed_angle)
             if angle_diff > math.pi:
                 angle_diff = 2 * math.pi - angle_diff
-            # Outside labels have more space at larger radii
-            # 0.12 radians ~= 7 degrees - allows planets 7°+ apart to share radius
-            if angle_diff < 0.12 and abs(radius - placed_r) < 18:
+
+            # On left/right sides (horizontal zones), labels spread horizontally
+            # so we can allow closer angular spacing at the same radius
+            is_horizontal = abs(math.sin(angle)) < 0.5  # within ~30° of horizontal
+            placed_is_horizontal = abs(math.sin(placed_angle)) < 0.5
+
+            if is_horizontal and placed_is_horizontal:
+                # Both on sides - only collide if very close (< 3°)
+                threshold = 0.05
+            else:
+                # Top/bottom or mixed - need more spacing
+                threshold = 0.08
+
+            if angle_diff < threshold and abs(radius - placed_r) < 16:
                 return True
         return False
 

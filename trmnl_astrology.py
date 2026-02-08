@@ -148,10 +148,13 @@ def render_chart_svg(positions):
 
     # === LEFT SIDE: Zodiac Wheel ===
     wheel_cx, wheel_cy = 240, 240
-    outer_r = 200
-    inner_r = 140
-    glyph_r = 170  # Radius for sign glyphs
-    planet_r = 100  # Radius for planet glyphs
+    outer_r = 210          # Outer edge of sign ring
+    inner_r = 180          # Inner edge of sign ring (main wheel boundary)
+    sign_glyph_r = 195     # Sign glyphs centered in the ring
+    planet_r = 150         # Planet glyphs inside the wheel
+    degree_r = 120         # Degree labels inside planet glyphs
+    tick_outer = inner_r   # Ticks touch inner ring
+    tick_inner = inner_r - 15
 
     # Calculate rotation so Ascendant is at 9 o'clock (180° screen angle)
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
@@ -161,21 +164,20 @@ def render_chart_svg(positions):
         """Convert zodiac longitude to screen angle with ASC at 9 o'clock"""
         return math.radians(zodiac_lon + rotation_offset)
 
-    # Outer circle
+    # Outer circle (outer edge of sign ring)
     dwg.add(dwg.circle(center=(wheel_cx, wheel_cy), r=outer_r,
-                       stroke='black', stroke_width=3, fill='none'))
+                       stroke='black', stroke_width=2, fill='none'))
 
-    # Inner circle
+    # Inner circle (inner edge of sign ring / main wheel boundary)
     dwg.add(dwg.circle(center=(wheel_cx, wheel_cy), r=inner_r,
                        stroke='black', stroke_width=2, fill='none'))
 
     # Draw 12 sign divisions and glyphs
     for i in range(12):
         # Line from center to outer circle at sign boundaries
-        # Apply rotation so ASC is at 9 o'clock
         angle_rad = to_screen_angle(i * 30)
 
-        x1 = wheel_cx  # Start from center
+        x1 = wheel_cx
         y1 = wheel_cy
         x2 = wheel_cx + outer_r * math.cos(angle_rad)
         y2 = wheel_cy - outer_r * math.sin(angle_rad)
@@ -183,28 +185,37 @@ def render_chart_svg(positions):
         dwg.add(dwg.line(start=(x1, y1), end=(x2, y2),
                         stroke='black', stroke_width=1))
 
-        # Sign glyph in middle of each sign sector
+        # Sign glyph centered in the narrow ring
         mid_angle_rad = to_screen_angle(i * 30 + 15)
-        gx = wheel_cx + glyph_r * math.cos(mid_angle_rad)
-        gy = wheel_cy - glyph_r * math.sin(mid_angle_rad)
+        gx = wheel_cx + sign_glyph_r * math.cos(mid_angle_rad)
+        gy = wheel_cy - sign_glyph_r * math.sin(mid_angle_rad)
 
-        dwg.add(dwg.text(SIGN_GLYPHS[i], insert=(gx, gy + 8),
-                        text_anchor='middle', font_size='24px',
+        dwg.add(dwg.text(SIGN_GLYPHS[i], insert=(gx, gy + 6),
+                        text_anchor='middle', font_size='18px',
                         font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
-    # Draw tick marks on inner ring for each planet
-    tick_inner = inner_r - 10  # Start of tick (inside inner ring)
-    tick_outer = inner_r + 5   # End of tick (on/past inner ring)
+    # Draw tick marks, planet glyphs, and degrees on outer ring area
     for body in BODIES:
         if body in positions and body not in ['ascendant', 'medium_coeli']:
-            lon = positions[body]['lon']
-            tick_angle = to_screen_angle(lon)
-            t1x = wheel_cx + tick_inner * math.cos(tick_angle)
-            t1y = wheel_cy - tick_inner * math.sin(tick_angle)
-            t2x = wheel_cx + tick_outer * math.cos(tick_angle)
-            t2y = wheel_cy - tick_outer * math.sin(tick_angle)
+            pos = positions[body]
+            lon = pos['lon']
+            angle = to_screen_angle(lon)
+
+            # Tick mark on outer ring
+            t1x = wheel_cx + tick_inner * math.cos(angle)
+            t1y = wheel_cy - tick_inner * math.sin(angle)
+            t2x = wheel_cx + tick_outer * math.cos(angle)
+            t2y = wheel_cy - tick_outer * math.sin(angle)
             dwg.add(dwg.line(start=(t1x, t1y), end=(t2x, t2y),
                             stroke='black', stroke_width=2))
+
+            # Degree label
+            deg_x = wheel_cx + degree_r * math.cos(angle)
+            deg_y = wheel_cy - degree_r * math.sin(angle)
+            deg_label = f"{pos['deg']}°"
+            dwg.add(dwg.text(deg_label, insert=(deg_x, deg_y + 3),
+                            text_anchor='middle', font_size='9px',
+                            font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
 
     # Place planet glyphs on wheel at their longitudes
     planet_positions = []
@@ -249,12 +260,12 @@ def render_chart_svg(positions):
         ay = wheel_cy - outer_r * math.sin(asc_rad)
         dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(ax, ay),
                         stroke='black', stroke_width=3))
-        # ASC label outside
-        label_x = wheel_cx + (outer_r + 15) * math.cos(asc_rad)
-        label_y = wheel_cy - (outer_r + 15) * math.sin(asc_rad)
+        # ASC label outside the outer ring
+        label_x = wheel_cx + (outer_r + 12) * math.cos(asc_rad)
+        label_y = wheel_cy - (outer_r + 12) * math.sin(asc_rad)
         dwg.add(dwg.text('ASC', insert=(label_x, label_y + 4),
-                        text_anchor='middle', font_size='12px',
-                        font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
+                        text_anchor='middle', font_size='11px',
+                        font_family='DejaVu Sans, Arial, sans-serif', fill='black',
                         font_weight='bold'))
 
     # Draw MC line (rotated with the wheel)
@@ -264,17 +275,17 @@ def render_chart_svg(positions):
         my = wheel_cy - outer_r * math.sin(mc_rad)
         dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(mx, my),
                         stroke='black', stroke_width=2, stroke_dasharray='5,3'))
-        label_x = wheel_cx + (outer_r + 15) * math.cos(mc_rad)
-        label_y = wheel_cy - (outer_r + 15) * math.sin(mc_rad)
+        label_x = wheel_cx + (outer_r + 12) * math.cos(mc_rad)
+        label_y = wheel_cy - (outer_r + 12) * math.sin(mc_rad)
         dwg.add(dwg.text('MC', insert=(label_x, label_y + 4),
-                        text_anchor='middle', font_size='12px',
-                        font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
+                        text_anchor='middle', font_size='11px',
+                        font_family='DejaVu Sans, Arial, sans-serif', fill='black',
                         font_weight='bold'))
 
     # === RIGHT SIDE: Legend Panel ===
     legend_x = 500
-    legend_y_start = 30
-    line_height = 30
+    legend_y_start = 25
+    line_height = 27  # Reduced to fit 14 items above timestamp
 
     # Header
     dwg.add(dwg.text('Planetary Positions', insert=(legend_x + 100, legend_y_start),
@@ -298,17 +309,17 @@ def render_chart_svg(positions):
 
             # Body glyph
             dwg.add(dwg.text(glyph, insert=(legend_x + 10, y),
-                            font_size='22px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
+                            font_size='20px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black', font_weight='bold'))
 
             # Sign glyph
-            dwg.add(dwg.text(sign_glyph, insert=(legend_x + 60, y),
-                            font_size='22px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
+            dwg.add(dwg.text(sign_glyph, insert=(legend_x + 55, y),
+                            font_size='20px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black'))
 
             # Degrees
-            dwg.add(dwg.text(deg_str, insert=(legend_x + 100, y),
-                            font_size='20px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
+            dwg.add(dwg.text(deg_str, insert=(legend_x + 95, y),
+                            font_size='18px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black'))
 
             y += line_height

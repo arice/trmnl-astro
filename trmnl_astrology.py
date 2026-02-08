@@ -171,12 +171,12 @@ def render_chart_svg(positions):
 
     # Draw 12 sign divisions and glyphs
     for i in range(12):
-        # Line from inner to outer circle at sign boundaries
+        # Line from center to outer circle at sign boundaries
         # Apply rotation so ASC is at 9 o'clock
         angle_rad = to_screen_angle(i * 30)
 
-        x1 = wheel_cx + inner_r * math.cos(angle_rad)
-        y1 = wheel_cy - inner_r * math.sin(angle_rad)
+        x1 = wheel_cx  # Start from center
+        y1 = wheel_cy
         x2 = wheel_cx + outer_r * math.cos(angle_rad)
         y2 = wheel_cy - outer_r * math.sin(angle_rad)
 

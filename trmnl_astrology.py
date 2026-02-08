@@ -2,28 +2,32 @@
 """
 TRMNL Astrology Current Chart Updater
 Fetches current planetary positions for Philadelphia and sends to TRMNL
+Saves PNG to docs/ folder for GitHub Pages hosting
 """
 
 import os
 import sys
-import base64
 import requests
 from datetime import datetime
-from io import BytesIO
 
 # Configuration from environment variables
-ASTROLOGER_API_URL = os.environ.get('ASTROLOGER_API_URL')  # e.g., http://your-droplet-ip:8000
+ASTROLOGER_API_URL = os.environ.get('ASTROLOGER_API_URL')
 TRMNL_API_KEY = os.environ.get('TRMNL_API_KEY')
 PLUGIN_UUID = os.environ.get('PLUGIN_UUID')
+GITHUB_USERNAME = os.environ.get('GITHUB_USERNAME')
+GITHUB_REPO = os.environ.get('GITHUB_REPO')
 
 # TRMNL webhook endpoint
 TRMNL_WEBHOOK_URL = f"https://usetrmnl.com/api/custom_plugins/{PLUGIN_UUID}"
+
+# Output path for PNG
+OUTPUT_PATH = "docs/chart.png"
 
 # Current chart request payload (Philadelphia)
 CHART_PAYLOAD = {
     "subject": {
         "name": "Philadelphia Now",
-        "year": None,  # Will be set dynamically
+        "year": None,
         "month": None,
         "day": None,
         "hour": None,
@@ -41,10 +45,8 @@ def get_current_chart():
     """Fetch current planetary positions chart from Astrologer API"""
     print("Fetching current planetary positions for Philadelphia...")
     
-    # Get current time
     now = datetime.now()
     
-    # Update payload with current time
     CHART_PAYLOAD["subject"]["year"] = now.year
     CHART_PAYLOAD["subject"]["month"] = now.month
     CHART_PAYLOAD["subject"]["day"] = now.day
@@ -53,7 +55,6 @@ def get_current_chart():
     
     print(f"Time: {now.strftime('%Y-%m-%d %H:%M:%S')}")
     
-    # Call Astrologer API (using birth-chart endpoint for current positions)
     response = requests.post(
         f"{ASTROLOGER_API_URL}/api/v5/chart/birth-chart",
         json=CHART_PAYLOAD,
@@ -71,9 +72,9 @@ def get_current_chart():
     return data["chart"]
 
 
-def svg_to_png_base64(svg_content):
-    """Convert SVG to PNG and encode as base64"""
-    print("Converting SVG to PNG for e-ink display...")
+def svg_to_png_bw(svg_content, output_path=OUTPUT_PATH):
+    """Convert SVG to black & white PNG for e-ink display"""
+    print("Converting SVG to B&W PNG for e-ink...")
     
     try:
         import cairosvg
@@ -86,40 +87,36 @@ def svg_to_png_base64(svg_content):
         from PIL import Image
         import io
     
-    # Convert SVG to PNG at full size first
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
     png_data = cairosvg.svg2png(
         bytestring=svg_content.encode('utf-8'),
         output_width=800,
         output_height=480
     )
     
-    # Open with PIL
     img = Image.open(io.BytesIO(png_data))
+    img = img.convert('L')
+    img = img.point(lambda x: 0 if x < 128 else 255, '1')
     
-    # Convert to pure black and white (1-bit) for e-ink display
-    img = img.convert('L')  # Convert to grayscale first
-    img = img.point(lambda x: 0 if x < 128 else 255, '1')  # Convert to 1-bit B&W
+    img.save(output_path, format='PNG', optimize=True)
     
-    # Save with maximum compression
-    output = io.BytesIO()
-    img.save(output, format='PNG', optimize=True)
-    compressed_png = output.getvalue()
+    file_size = os.path.getsize(output_path)
+    print(f"✅ PNG saved to {output_path} ({file_size} bytes)")
     
-    # Encode as base64
-    base64_png = base64.b64encode(compressed_png).decode('utf-8')
-    
-    print(f"PNG size: {len(compressed_png)} bytes, Base64 size: {len(base64_png)} bytes")
-    
-    return base64_png
+    return output_path
 
 
-def send_to_trmnl(image_base64):
-    """Send image to TRMNL via webhook"""
-    print("Sending to TRMNL...")
+def send_to_trmnl():
+    """Send image URL to TRMNL via webhook"""
+    print("Sending URL to TRMNL...")
+    
+    timestamp = int(datetime.now().timestamp())
+    image_url = f"https://{GITHUB_USERNAME}.github.io/{GITHUB_REPO}/chart.png?t={timestamp}"
     
     payload = {
         "merge_variables": {
-            "transit_chart": image_base64,
+            "chart_url": image_url,
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M EST")
         }
     }
@@ -139,34 +136,35 @@ def send_to_trmnl(image_base64):
     if response.status_code not in [200, 201]:
         raise Exception(f"TRMNL webhook error: {response.status_code} - {response.text}")
     
-    print("✅ Successfully sent to TRMNL!")
+    print("✅ Successfully sent URL to TRMNL!")
+    print(f"   Payload size: {len(str(payload))} bytes")
+    print(f"   Image URL: {image_url}")
     return response.json()
 
 
 def main():
     """Main execution"""
-    # Validate environment variables
-    if not all([ASTROLOGER_API_URL, TRMNL_API_KEY, PLUGIN_UUID]):
+    if not all([ASTROLOGER_API_URL, TRMNL_API_KEY, PLUGIN_UUID, GITHUB_USERNAME, GITHUB_REPO]):
         print("❌ Error: Missing required environment variables:")
         print(f"   ASTROLOGER_API_URL: {'✓' if ASTROLOGER_API_URL else '✗'}")
         print(f"   TRMNL_API_KEY: {'✓' if TRMNL_API_KEY else '✗'}")
         print(f"   PLUGIN_UUID: {'✓' if PLUGIN_UUID else '✗'}")
+        print(f"   GITHUB_USERNAME: {'✓' if GITHUB_USERNAME else '✗'}")
+        print(f"   GITHUB_REPO: {'✓' if GITHUB_REPO else '✗'}")
         sys.exit(1)
     
     try:
-        # Step 1: Get current chart SVG
         svg_chart = get_current_chart()
+        png_path = svg_to_png_bw(svg_chart)
+        result = send_to_trmnl()
         
-        # Step 2: Convert to PNG and encode
-        png_base64 = svg_to_png_base64(svg_chart)
-        
-        # Step 3: Send to TRMNL
-        result = send_to_trmnl(png_base64)
-        
-        print(f"✅ Success! Chart updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"\n✅ SUCCESS! Chart updated at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   File saved to: {png_path}")
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"\n❌ Error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

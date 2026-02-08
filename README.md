@@ -4,7 +4,7 @@ Displays current planetary positions on your TRMNL e-ink display. Fetches positi
 
 ## Features
 
-- **15-Minute Updates**: Automatically updates planetary positions via GitHub Actions
+- **5-Minute Updates**: Automatically updates planetary positions via GitHub Actions
 - **Custom Chart Rendering**: Clean wheel + legend layout optimized for e-ink
 - **Self-Hosted API**: Uses your own Astrologer API (Kerykeion-based)
 - **GitHub Pages**: Chart hosted publicly, no base64 encoding needed
@@ -49,7 +49,7 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **New repos
 
 | Secret Name | Description | Example |
 |-------------|-------------|---------|
-| `ASTROLOGER_API_URL` | Your Astrologer API endpoint | `http://123.456.78.90:27391` |
+| `ASTROLOGER_API_URL` | Your Astrologer API endpoint | `http://123.456.78.90:8000` |
 | `TRMNL_API_KEY` | Your TRMNL API key | `trmnl_xxxxxxxxxxxxx` |
 | `PLUGIN_UUID` | Your TRMNL plugin UUID | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
 | `GH_USERNAME` | Your GitHub username | `arice` |
@@ -104,7 +104,7 @@ Edit `.github/workflows/hourly_update.yml`:
 ```yaml
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Every 15 minutes (current)
+    - cron: '*/5 * * * *'  # Every 5 minutes (current)
     # - cron: '0 * * * *'   # Every hour
     # - cron: '*/30 * * * *' # Every 30 minutes
 ```

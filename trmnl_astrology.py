@@ -153,6 +153,14 @@ def render_chart_svg(positions):
     glyph_r = 170  # Radius for sign glyphs
     planet_r = 100  # Radius for planet glyphs
 
+    # Calculate rotation so Ascendant is at 9 o'clock (180° screen angle)
+    asc_lon = positions.get('ascendant', {}).get('lon', 0)
+    rotation_offset = 180 - asc_lon  # Rotate wheel so ASC is at left
+
+    def to_screen_angle(zodiac_lon):
+        """Convert zodiac longitude to screen angle with ASC at 9 o'clock"""
+        return math.radians(zodiac_lon + rotation_offset)
+
     # Outer circle
     dwg.add(dwg.circle(center=(wheel_cx, wheel_cy), r=outer_r,
                        stroke='black', stroke_width=3, fill='none'))
@@ -164,12 +172,9 @@ def render_chart_svg(positions):
     # Draw 12 sign divisions and glyphs
     for i in range(12):
         # Line from inner to outer circle at sign boundaries
-        # Aries starts at 0 degrees (right side, 3 o'clock position)
-        # Zodiac goes counter-clockwise
-        angle_deg = i * 30
-        angle_rad = math.radians(angle_deg)
+        # Apply rotation so ASC is at 9 o'clock
+        angle_rad = to_screen_angle(i * 30)
 
-        # Calculate line endpoints (rotate so 0 deg Aries is at right)
         x1 = wheel_cx + inner_r * math.cos(angle_rad)
         y1 = wheel_cy - inner_r * math.sin(angle_rad)
         x2 = wheel_cx + outer_r * math.cos(angle_rad)
@@ -179,8 +184,7 @@ def render_chart_svg(positions):
                         stroke='black', stroke_width=1))
 
         # Sign glyph in middle of each sign sector
-        mid_angle_deg = i * 30 + 15
-        mid_angle_rad = math.radians(mid_angle_deg)
+        mid_angle_rad = to_screen_angle(i * 30 + 15)
         gx = wheel_cx + glyph_r * math.cos(mid_angle_rad)
         gy = wheel_cy - glyph_r * math.sin(mid_angle_rad)
 
@@ -189,7 +193,6 @@ def render_chart_svg(positions):
                         font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
     # Place planet glyphs on wheel at their longitudes
-    # Collect positions to handle collisions
     planet_positions = []
     for body in BODIES:
         if body in positions and body not in ['ascendant', 'medium_coeli']:
@@ -201,11 +204,10 @@ def render_chart_svg(positions):
     placed = []
 
     for body, lon in planet_positions:
-        # Convert longitude to angle (0 deg Aries = right side, counter-clockwise)
-        angle_rad = math.radians(lon)
+        screen_angle = to_screen_angle(lon)
 
         # Check for collisions with already placed planets
-        adjusted_angle = angle_rad
+        adjusted_angle = screen_angle
         for _, placed_angle in placed:
             angle_diff = abs(adjusted_angle - placed_angle)
             if angle_diff < 0.2:  # Too close (~11 degrees)
@@ -221,10 +223,9 @@ def render_chart_svg(positions):
                         font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
                         font_weight='bold'))
 
-    # Draw ASC line (thicker, extends from center)
+    # Draw ASC line (always at 9 o'clock / 180°)
     if 'ascendant' in positions:
-        asc_lon = positions['ascendant']['lon']
-        asc_rad = math.radians(asc_lon)
+        asc_rad = math.radians(180)  # ASC is always at 9 o'clock
         ax = wheel_cx + outer_r * math.cos(asc_rad)
         ay = wheel_cy - outer_r * math.sin(asc_rad)
         dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(ax, ay),
@@ -237,10 +238,9 @@ def render_chart_svg(positions):
                         font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
                         font_weight='bold'))
 
-    # Draw MC line
+    # Draw MC line (rotated with the wheel)
     if 'medium_coeli' in positions:
-        mc_lon = positions['medium_coeli']['lon']
-        mc_rad = math.radians(mc_lon)
+        mc_rad = to_screen_angle(positions['medium_coeli']['lon'])
         mx = wheel_cx + outer_r * math.cos(mc_rad)
         my = wheel_cy - outer_r * math.sin(mc_rad)
         dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(mx, my),

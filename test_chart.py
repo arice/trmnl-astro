@@ -5,7 +5,7 @@ Run: pip install svgwrite cairosvg pillow pyyaml && python test_chart.py
 """
 
 # Import the main module functions
-from trmnl_astrology import render_chart_svg, svg_to_png_bw
+from trmnl_astrology import render_chart_svg, svg_to_png_grayscale
 
 # Mock position data (similar to real positions)
 # Includes retrograde flags for testing (Jupiter, Saturn, Uranus, Neptune, Pluto can be retrograde)
@@ -44,7 +44,8 @@ if __name__ == "__main__":
     )
     img = Image.open(io.BytesIO(png_data))
     img = img.convert('L')
-    img = img.point(lambda x: 0 if x < 128 else 255, '1')
+    # 4-level quantization for 2-bit grayscale: 0, 85, 170, 255
+    img = img.point(lambda x: [0, 85, 170, 255][min(x // 64, 3)], 'L')
     img.save(output_path, format='PNG', optimize=True)
 
     print(f"\nDone! Open {output_path} to see the result.")

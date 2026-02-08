@@ -99,6 +99,9 @@ MOON_PHASES = [
 # Retrograde symbol (using simple R for compatibility)
 RETROGRADE_GLYPH = 'R'
 
+# Dark gray for secondary elements (2-bit grayscale support)
+DARK_GRAY = '#555555'
+
 # Bodies to display (from config)
 BODIES = CONFIG.get('bodies', [
     'sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter',
@@ -264,7 +267,7 @@ def render_chart_svg(positions):
             t2x = wheel_cx + tick_outer * math.cos(angle)
             t2y = wheel_cy - tick_outer * math.sin(angle)
             dwg.add(dwg.line(start=(t1x, t1y), end=(t2x, t2y),
-                            stroke='black', stroke_width=2))
+                            stroke=DARK_GRAY, stroke_width=2))
 
     # Draw degree labels with collision avoidance
     degree_labels = []
@@ -344,30 +347,48 @@ def render_chart_svg(positions):
                         font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
                         font_weight='bold'))
 
-    # Draw ASC line (always at 9 o'clock / 180°)
+    # Draw ASC tick on outer ring (always at 9 o'clock / 180°)
     if 'ascendant' in positions:
         asc_rad = math.radians(180)  # ASC is always at 9 o'clock
-        ax = wheel_cx + outer_r * math.cos(asc_rad)
-        ay = wheel_cy - outer_r * math.sin(asc_rad)
-        dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(ax, ay),
+        # Tick mark on outer ring (175 → 185)
+        tick_start_x = wheel_cx + outer_r * math.cos(asc_rad)
+        tick_start_y = wheel_cy - outer_r * math.sin(asc_rad)
+        tick_end_x = wheel_cx + (outer_r + 10) * math.cos(asc_rad)
+        tick_end_y = wheel_cy - (outer_r + 10) * math.sin(asc_rad)
+        dwg.add(dwg.line(start=(tick_start_x, tick_start_y), end=(tick_end_x, tick_end_y),
                         stroke='black', stroke_width=2))
         # ASC label outside the wheel
         label_x = wheel_cx + (degree_r + 8) * math.cos(asc_rad)
         label_y = wheel_cy - (degree_r + 8) * math.sin(asc_rad)
         dwg.add(dwg.text('ASC', insert=(label_x, label_y + 4),
                         text_anchor='middle', font_size='11px',
+                        font_family='DejaVu Sans, Arial, sans-serif', fill='black',
+                        font_weight='bold'))
+        # ASC degree label below
+        asc_deg = positions['ascendant']['deg']
+        dwg.add(dwg.text(f"{asc_deg}°", insert=(label_x, label_y + 16),
+                        text_anchor='middle', font_size='11px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
 
-    # Draw MC line (rotated with the wheel)
+    # Draw MC tick on outer ring (rotated with the wheel)
     if 'medium_coeli' in positions:
         mc_rad = to_screen_angle(positions['medium_coeli']['lon'])
-        mx = wheel_cx + outer_r * math.cos(mc_rad)
-        my = wheel_cy - outer_r * math.sin(mc_rad)
-        dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(mx, my),
-                        stroke='black', stroke_width=2, stroke_dasharray='5,3'))
+        # Tick mark on outer ring (175 → 185)
+        tick_start_x = wheel_cx + outer_r * math.cos(mc_rad)
+        tick_start_y = wheel_cy - outer_r * math.sin(mc_rad)
+        tick_end_x = wheel_cx + (outer_r + 10) * math.cos(mc_rad)
+        tick_end_y = wheel_cy - (outer_r + 10) * math.sin(mc_rad)
+        dwg.add(dwg.line(start=(tick_start_x, tick_start_y), end=(tick_end_x, tick_end_y),
+                        stroke='black', stroke_width=2))
         label_x = wheel_cx + (degree_r + 8) * math.cos(mc_rad)
         label_y = wheel_cy - (degree_r + 8) * math.sin(mc_rad)
         dwg.add(dwg.text('MC', insert=(label_x, label_y + 4),
+                        text_anchor='middle', font_size='11px',
+                        font_family='DejaVu Sans, Arial, sans-serif', fill='black',
+                        font_weight='bold'))
+        # MC degree label below
+        mc_deg = positions['medium_coeli']['deg']
+        dwg.add(dwg.text(f"{mc_deg}°", insert=(label_x, label_y + 16),
                         text_anchor='middle', font_size='11px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
 
@@ -443,14 +464,14 @@ def render_chart_svg(positions):
     timestamp = f"{date_str} {time_str}"
     dwg.add(dwg.text(f"{LOCATION['name']} | {timestamp}", insert=(legend_x + 130, 460),
                     text_anchor='middle', font_size='14px',
-                    font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
+                    font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill=DARK_GRAY))
 
     return dwg.tostring()
 
 
-def svg_to_png_bw(svg_content, output_path=OUTPUT_PATH):
-    """Convert SVG to black & white PNG for e-ink display"""
-    print("Converting SVG to B&W PNG for e-ink...")
+def svg_to_png_grayscale(svg_content, output_path=OUTPUT_PATH):
+    """Convert SVG to 4-level grayscale PNG for TRMNL 2-bit e-ink display"""
+    print("Converting SVG to 4-level grayscale PNG for e-ink...")
 
     try:
         import cairosvg
@@ -473,7 +494,8 @@ def svg_to_png_bw(svg_content, output_path=OUTPUT_PATH):
 
     img = Image.open(io.BytesIO(png_data))
     img = img.convert('L')
-    img = img.point(lambda x: 0 if x < 128 else 255, '1')
+    # 4-level quantization for 2-bit grayscale: 0, 85, 170, 255
+    img = img.point(lambda x: [0, 85, 170, 255][min(x // 64, 3)], 'L')
 
     img.save(output_path, format='PNG', optimize=True)
 
@@ -536,8 +558,8 @@ def main():
         # Render custom wheel + legend SVG
         svg_chart = render_chart_svg(positions)
 
-        # Convert to e-ink optimized PNG
-        png_path = svg_to_png_bw(svg_chart)
+        # Convert to e-ink optimized PNG (4-level grayscale)
+        png_path = svg_to_png_grayscale(svg_chart)
 
         # Send to TRMNL
         result = send_to_trmnl()

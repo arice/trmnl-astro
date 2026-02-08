@@ -213,24 +213,29 @@ def render_chart_svg(positions):
             lon = positions[body]['lon']
             planet_positions.append((body, lon))
 
-    # Simple collision avoidance: offset planets that are too close
+    # Collision avoidance: stack planets radially (adjust radius, not angle)
+    # This keeps planets in their correct zodiacal position
     planet_positions.sort(key=lambda x: x[1])
-    placed = []
+    placed = []  # (angle, radius) of placed planets
 
     for body, lon in planet_positions:
         screen_angle = to_screen_angle(lon)
+        current_r = planet_r
 
-        # Check for collisions with already placed planets
-        adjusted_angle = screen_angle
-        for _, placed_angle in placed:
-            angle_diff = abs(adjusted_angle - placed_angle)
-            if angle_diff < 0.2:  # Too close (~11 degrees)
-                adjusted_angle += 0.15
+        # Check for collisions - if too close angularly, move inward
+        for placed_angle, placed_r in placed:
+            angle_diff = abs(screen_angle - placed_angle)
+            # Also check wrap-around (e.g., 359° vs 1°)
+            if angle_diff > math.pi:
+                angle_diff = 2 * math.pi - angle_diff
+            # If within ~10 degrees and same radius band, move inward
+            if angle_diff < 0.18 and abs(current_r - placed_r) < 20:
+                current_r -= 22  # Move inward by 22px
 
-        px = wheel_cx + planet_r * math.cos(adjusted_angle)
-        py = wheel_cy - planet_r * math.sin(adjusted_angle)
+        px = wheel_cx + current_r * math.cos(screen_angle)
+        py = wheel_cy - current_r * math.sin(screen_angle)
 
-        placed.append((body, adjusted_angle))
+        placed.append((screen_angle, current_r))
 
         dwg.add(dwg.text(BODY_GLYPHS[body], insert=(px, py + 6),
                         text_anchor='middle', font_size='20px',

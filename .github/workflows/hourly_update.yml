@@ -23,7 +23,11 @@ jobs:
       
       - name: Install dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y fonts-noto-extra fonts-freefont-ttf
+          # Download Noto Sans Symbols 2 which has astrological glyphs
+          mkdir -p ~/.local/share/fonts
+          curl -L -o /tmp/NotoSansSymbols2.zip "https://fonts.google.com/download?family=Noto%20Sans%20Symbols%202"
+          unzip -o /tmp/NotoSansSymbols2.zip -d ~/.local/share/fonts/
+          fc-cache -fv
           pip install requests cairosvg pillow svgwrite
       
       - name: Generate and update chart

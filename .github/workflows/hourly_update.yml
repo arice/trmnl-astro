@@ -23,10 +23,10 @@ jobs:
       
       - name: Install dependencies
         run: |
-          # Download Noto Sans Symbols 2 which has astrological glyphs
+          # Download Noto Sans Symbols 2 from GitHub releases
           mkdir -p ~/.local/share/fonts
-          curl -L -o /tmp/NotoSansSymbols2.zip "https://fonts.google.com/download?family=Noto%20Sans%20Symbols%202"
-          unzip -o /tmp/NotoSansSymbols2.zip -d ~/.local/share/fonts/
+          curl -L -o ~/.local/share/fonts/NotoSansSymbols2-Regular.ttf \
+            "https://github.com/notofonts/symbols/releases/download/NotoSansSymbols2-v2.008/NotoSansSymbols2-Regular.ttf"
           fc-cache -fv
           pip install requests cairosvg pillow svgwrite
       

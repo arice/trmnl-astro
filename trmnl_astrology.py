@@ -356,8 +356,7 @@ def render_chart_svg(positions):
         label_y = wheel_cy - (degree_r + 8) * math.sin(asc_rad)
         dwg.add(dwg.text('ASC', insert=(label_x, label_y + 4),
                         text_anchor='middle', font_size='11px',
-                        font_family='DejaVu Sans, Arial, sans-serif', fill='black',
-                        font_weight='bold'))
+                        font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
 
     # Draw MC line (rotated with the wheel)
     if 'medium_coeli' in positions:
@@ -370,8 +369,7 @@ def render_chart_svg(positions):
         label_y = wheel_cy - (degree_r + 8) * math.sin(mc_rad)
         dwg.add(dwg.text('MC', insert=(label_x, label_y + 4),
                         text_anchor='middle', font_size='11px',
-                        font_family='DejaVu Sans, Arial, sans-serif', fill='black',
-                        font_weight='bold'))
+                        font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
 
     # === RIGHT SIDE: Legend Panel ===
     legend_x = 470

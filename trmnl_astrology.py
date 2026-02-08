@@ -192,6 +192,20 @@ def render_chart_svg(positions):
                         text_anchor='middle', font_size='24px',
                         font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
+    # Draw tick marks on inner ring for each planet
+    tick_inner = inner_r - 10  # Start of tick (inside inner ring)
+    tick_outer = inner_r + 5   # End of tick (on/past inner ring)
+    for body in BODIES:
+        if body in positions and body not in ['ascendant', 'medium_coeli']:
+            lon = positions[body]['lon']
+            tick_angle = to_screen_angle(lon)
+            t1x = wheel_cx + tick_inner * math.cos(tick_angle)
+            t1y = wheel_cy - tick_inner * math.sin(tick_angle)
+            t2x = wheel_cx + tick_outer * math.cos(tick_angle)
+            t2y = wheel_cy - tick_outer * math.sin(tick_angle)
+            dwg.add(dwg.line(start=(t1x, t1y), end=(t2x, t2y),
+                            stroke='black', stroke_width=2))
+
     # Place planet glyphs on wheel at their longitudes
     planet_positions = []
     for body in BODIES:

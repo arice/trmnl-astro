@@ -153,8 +153,8 @@ def render_chart_svg(positions):
     sign_glyph_r = 163     # Sign glyphs centered in the ring
     planet_r = 115         # Planet glyphs inside the wheel
     degree_r = 195         # Degree labels OUTSIDE the wheel
-    tick_outer = outer_r   # Ticks touch outer ring
-    tick_inner = outer_r - 12  # Ticks visible on outer edge of sign ring
+    tick_outer = inner_r   # Ticks attach to inner ring
+    tick_inner = inner_r - 12  # Ticks extend inward toward planet glyphs
 
     # Calculate rotation so Ascendant is at 9 o'clock (180° screen angle)
     asc_lon = positions.get('ascendant', {}).get('lon', 0)

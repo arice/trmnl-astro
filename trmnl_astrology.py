@@ -14,8 +14,8 @@ from datetime import datetime
 ASTROLOGER_API_URL = os.environ.get('ASTROLOGER_API_URL')
 TRMNL_API_KEY = os.environ.get('TRMNL_API_KEY')
 PLUGIN_UUID = os.environ.get('PLUGIN_UUID')
-GITHUB_USERNAME = os.environ.get('GITHUB_USERNAME')
-GITHUB_REPO = os.environ.get('GITHUB_REPO')
+GITHUB_USERNAME = os.environ.get('GH_USERNAME')
+GITHUB_REPO = os.environ.get('GH_REPO')
 
 # TRMNL webhook endpoint
 TRMNL_WEBHOOK_URL = f"https://usetrmnl.com/api/custom_plugins/{PLUGIN_UUID}"

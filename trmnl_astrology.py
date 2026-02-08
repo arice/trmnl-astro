@@ -315,7 +315,10 @@ def render_chart_svg(positions):
 
     # Timestamp at bottom (Philadelphia time)
     philly_tz = ZoneInfo("America/New_York")
-    timestamp = datetime.now(philly_tz).strftime('%Y-%m-%d %H:%M')
+    now_local = datetime.now(philly_tz)
+    date_str = now_local.strftime('%B %d %Y')
+    time_str = now_local.strftime('%-I:%M %p').lower()
+    timestamp = f"{date_str} {time_str}"
     dwg.add(dwg.text(f'Philadelphia | {timestamp}', insert=(legend_x + 100, 460),
                     text_anchor='middle', font_size='12px',
                     font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))

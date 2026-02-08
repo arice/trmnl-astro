@@ -152,7 +152,7 @@ def render_chart_svg(positions):
     inner_r = 180          # Inner edge of sign ring (main wheel boundary)
     sign_glyph_r = 195     # Sign glyphs centered in the ring
     planet_r = 150         # Planet glyphs inside the wheel
-    degree_r = 120         # Degree labels inside planet glyphs
+    degree_r = 105         # Degree labels closer to center
     tick_outer = inner_r   # Ticks touch inner ring
     tick_inner = inner_r - 15
 
@@ -183,7 +183,7 @@ def render_chart_svg(positions):
         y2 = wheel_cy - outer_r * math.sin(angle_rad)
 
         dwg.add(dwg.line(start=(x1, y1), end=(x2, y2),
-                        stroke='black', stroke_width=1))
+                        stroke='gray', stroke_width=1))
 
         # Sign glyph centered in the narrow ring
         mid_angle_rad = to_screen_angle(i * 30 + 15)
@@ -259,7 +259,7 @@ def render_chart_svg(positions):
         ax = wheel_cx + outer_r * math.cos(asc_rad)
         ay = wheel_cy - outer_r * math.sin(asc_rad)
         dwg.add(dwg.line(start=(wheel_cx, wheel_cy), end=(ax, ay),
-                        stroke='black', stroke_width=3))
+                        stroke='black', stroke_width=2))
         # ASC label outside the outer ring
         label_x = wheel_cx + (outer_r + 12) * math.cos(asc_rad)
         label_y = wheel_cy - (outer_r + 12) * math.sin(asc_rad)

@@ -55,9 +55,7 @@ def render(positions, config):
     inner_r = 150
     sign_glyph_r = 163
     planet_r = 125
-    degree_r = 195
-    degree_r_min = 180
-    degree_r_max = 210
+    degree_r = 195  # Used for ASC/MC label positioning
     tick_outer = inner_r
     tick_inner = inner_r - 9
 
@@ -93,7 +91,7 @@ def render(positions, config):
 
         dwg.add(dwg.text(SIGN_GLYPHS[i], insert=(gx, gy + 6),
                         text_anchor='middle', font_size='18px',
-                        font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
+                        font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
     # Draw tick marks
     for body in bodies:
@@ -109,68 +107,39 @@ def render(positions, config):
             dwg.add(dwg.line(start=(t1x, t1y), end=(t2x, t2y),
                             stroke=DARK_GRAY, stroke_width=2))
 
-    # Draw degree labels with collision avoidance
-    degree_labels = []
-    for body in bodies:
-        if body in positions and body not in ['ascendant', 'medium_coeli']:
-            pos = positions[body]
-            degree_labels.append((pos['lon'], pos['deg']))
-
-    degree_labels.sort(key=lambda x: x[0])
-    placed_degrees = []
-
-    for lon, deg in degree_labels:
-        angle = to_screen_angle(lon)
-        current_r = degree_r
-
-        for placed_angle, placed_r in placed_degrees:
-            angle_diff = abs(angle - placed_angle)
-            if angle_diff > math.pi:
-                angle_diff = 2 * math.pi - angle_diff
-            if angle_diff < 0.14 and abs(current_r - placed_r) < 12:
-                test_x = wheel_cx + (current_r + 14) * math.cos(angle)
-                test_y = wheel_cy - (current_r + 14) * math.sin(angle)
-                if test_x < 15 or test_x > 785 or test_y < 15 or test_y > 465:
-                    current_r = max(degree_r_min, current_r - 14)
-                else:
-                    current_r = min(degree_r_max, current_r + 14)
-
-        deg_x = wheel_cx + current_r * math.cos(angle)
-        deg_y = wheel_cy - current_r * math.sin(angle)
-        dwg.add(dwg.text(f"{deg}°", insert=(deg_x, deg_y + 4),
-                        text_anchor='middle', font_size='12px',
-                        font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
-
-        placed_degrees.append((angle, current_r))
-
-    # Place planet glyphs with collision avoidance
+    # Place combined planet glyph + degree labels with collision avoidance
     planet_positions = []
     for body in bodies:
         if body in positions and body not in ['ascendant', 'medium_coeli']:
-            planet_positions.append((body, positions[body]['lon']))
+            pos = positions[body]
+            planet_positions.append((body, pos['lon'], pos['deg']))
 
     planet_positions.sort(key=lambda x: x[1])
     placed = []
 
-    for body, lon in planet_positions:
+    for body, lon, deg in planet_positions:
         screen_angle = to_screen_angle(lon)
         current_r = planet_r
 
+        # Radial stacking: push inward when labels would overlap
         for placed_angle, placed_r in placed:
             angle_diff = abs(screen_angle - placed_angle)
             if angle_diff > math.pi:
                 angle_diff = 2 * math.pi - angle_diff
-            if angle_diff < 0.18 and abs(current_r - placed_r) < 20:
-                current_r -= 22
+            # Wider threshold (0.25 rad) for combined glyph+degree labels
+            if angle_diff < 0.25 and abs(current_r - placed_r) < 26:
+                current_r -= 28  # Larger step for breathing room
 
         px = wheel_cx + current_r * math.cos(screen_angle)
         py = wheel_cy - current_r * math.sin(screen_angle)
 
         placed.append((screen_angle, current_r))
 
-        dwg.add(dwg.text(BODY_GLYPHS[body], insert=(px, py + 6),
-                        text_anchor='middle', font_size='20px',
-                        font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
+        # Combined label: "☉ 19°"
+        combined_label = f"{BODY_GLYPHS[body]} {deg}°"
+        dwg.add(dwg.text(combined_label, insert=(px, py + 6),
+                        text_anchor='middle', font_size='16px',
+                        font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
                         font_weight='bold'))
 
     # Draw ASC tick on outer ring
@@ -228,7 +197,7 @@ def render(positions, config):
 
     dwg.add(dwg.text(header_text, insert=(legend_x + 130, legend_y_start),
                     text_anchor='middle', font_size='18px',
-                    font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
+                    font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
                     font_weight='bold'))
 
     dwg.add(dwg.line(start=(legend_x, legend_y_start + 10),
@@ -244,15 +213,15 @@ def render(positions, config):
             deg_str = f"{pos['deg']:02d}\u00B0{pos['min']:02d}'"
 
             dwg.add(dwg.text(glyph, insert=(legend_x + 10, y),
-                            font_size='20px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
+                            font_size='20px', font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black', font_weight='bold'))
 
             dwg.add(dwg.text(sign_glyph, insert=(legend_x + 60, y),
-                            font_size='20px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
+                            font_size='20px', font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black'))
 
             dwg.add(dwg.text(deg_str, insert=(legend_x + 100, y),
-                            font_size='18px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
+                            font_size='18px', font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black'))
 
             if show_retrograde and pos.get('retrograde', False):
@@ -276,6 +245,6 @@ def render(positions, config):
     timestamp = f"{date_str} {time_str}"
     dwg.add(dwg.text(f"[DEV] {location['name']} | {timestamp}", insert=(legend_x + 130, 460),
                     text_anchor='middle', font_size='14px',
-                    font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill=DARK_GRAY))
+                    font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill=DARK_GRAY))
 
     return dwg.tostring()

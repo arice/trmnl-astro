@@ -183,7 +183,7 @@ def render_chart_svg(positions):
 
         dwg.add(dwg.text(SIGN_GLYPHS[i], insert=(gx, gy + 8),
                         text_anchor='middle', font_size='24px',
-                        font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif', fill='black'))
+                        font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif', fill='black'))
 
     # Place planet glyphs on wheel at their longitudes
     # Collect positions to handle collisions
@@ -215,7 +215,7 @@ def render_chart_svg(positions):
 
         dwg.add(dwg.text(BODY_GLYPHS[body], insert=(px, py + 6),
                         text_anchor='middle', font_size='20px',
-                        font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif', fill='black',
+                        font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif', fill='black',
                         font_weight='bold'))
 
     # Draw ASC line (thicker, extends from center)
@@ -231,7 +231,7 @@ def render_chart_svg(positions):
         label_y = wheel_cy - (outer_r + 15) * math.sin(asc_rad)
         dwg.add(dwg.text('ASC', insert=(label_x, label_y + 4),
                         text_anchor='middle', font_size='12px',
-                        font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif', fill='black',
+                        font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif', fill='black',
                         font_weight='bold'))
 
     # Draw MC line
@@ -246,7 +246,7 @@ def render_chart_svg(positions):
         label_y = wheel_cy - (outer_r + 15) * math.sin(mc_rad)
         dwg.add(dwg.text('MC', insert=(label_x, label_y + 4),
                         text_anchor='middle', font_size='12px',
-                        font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif', fill='black',
+                        font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif', fill='black',
                         font_weight='bold'))
 
     # === RIGHT SIDE: Legend Panel ===
@@ -257,7 +257,7 @@ def render_chart_svg(positions):
     # Header
     dwg.add(dwg.text('Current Transits', insert=(legend_x + 100, legend_y_start),
                     text_anchor='middle', font_size='18px',
-                    font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif', fill='black',
+                    font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif', fill='black',
                     font_weight='bold'))
 
     # Divider line
@@ -276,17 +276,17 @@ def render_chart_svg(positions):
 
             # Body glyph
             dwg.add(dwg.text(glyph, insert=(legend_x + 10, y),
-                            font_size='22px', font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif',
+                            font_size='22px', font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif',
                             fill='black', font_weight='bold'))
 
             # Sign glyph
             dwg.add(dwg.text(sign_glyph, insert=(legend_x + 60, y),
-                            font_size='22px', font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif',
+                            font_size='22px', font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif',
                             fill='black'))
 
             # Degrees
             dwg.add(dwg.text(deg_str, insert=(legend_x + 100, y),
-                            font_size='20px', font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif',
+                            font_size='20px', font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif',
                             fill='black'))
 
             y += line_height
@@ -295,7 +295,7 @@ def render_chart_svg(positions):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
     dwg.add(dwg.text(f'Philadelphia | {timestamp}', insert=(legend_x + 100, 460),
                     text_anchor='middle', font_size='12px',
-                    font_family='Symbola, Noto Sans Symbols2, Noto Sans Symbols, Arial, sans-serif', fill='black'))
+                    font_family='Noto Sans Symbols2, FreeSans, DejaVu Sans, sans-serif', fill='black'))
 
     return dwg.tostring()
 

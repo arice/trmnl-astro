@@ -23,7 +23,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install requests cairosvg pillow
+          pip install requests cairosvg pillow svgwrite
       
       - name: Generate and update chart
         env:

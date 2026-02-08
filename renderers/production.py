@@ -1,6 +1,11 @@
 """
-Production chart renderer: Wheel + Legend layout.
-This is the stable version used for TRMNL display.
+Production chart renderer: Outside labels with adaptive stacking.
+
+Labels placed outside wheel with adaptive layout:
+- Stacked (glyph above, degree below) at top/bottom of wheel
+- Side-by-side on left/right sides of wheel
+
+Output: SVG string (800x480)
 """
 
 import math
@@ -16,14 +21,18 @@ from .base import (
 
 def render(positions, config):
     """
-    Generate 800x480 wheel + legend SVG optimized for e-ink.
+    Experimental chart renderer.
 
-    Args:
-        positions: Dict of body positions from API
-        config: Dict with 'location', 'bodies', 'display' keys
+    Currently: Copy of production layout.
+    Modify this to try new designs!
 
-    Returns:
-        SVG string
+    Ideas to try:
+    - Different wheel/legend proportions
+    - Aspect lines between planets
+    - Alternative color schemes (for grayscale)
+    - Different glyph sizes or fonts
+    - House cusp indicators
+    - Element/modality groupings
     """
     location = config['location']
     bodies = config.get('bodies', list(BODY_GLYPHS.keys()))
@@ -39,13 +48,13 @@ def render(positions, config):
 
     # === LEFT SIDE: Zodiac Wheel ===
     wheel_cx, wheel_cy = 220, 240
-    outer_r = 175
-    inner_r = 150
-    sign_glyph_r = 163
-    planet_r = 125
-    degree_r = 195  # Used for ASC/MC label positioning
-    tick_outer = inner_r
-    tick_inner = inner_r - 9
+    outer_r = 155      # Smaller wheel to make room for outside labels
+    inner_r = 130
+    sign_glyph_r = 143
+    planet_r = 185     # Labels outside wheel (beyond outer_r)
+    max_planet_r = 230 # Maximum outward radius for labels
+    tick_outer = outer_r
+    tick_inner = outer_r - 8
 
     # Calculate rotation so Ascendant is at 9 o'clock
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
@@ -81,7 +90,7 @@ def render(positions, config):
                         text_anchor='middle', font_size='18px',
                         font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
-    # Draw tick marks
+    # Draw tick marks on outer ring (pointing outward toward labels)
     for body in bodies:
         if body in positions and body not in ['ascendant', 'medium_coeli']:
             pos = positions[body]
@@ -111,68 +120,90 @@ def render(positions, config):
             angle_diff = abs(angle - placed_angle)
             if angle_diff > math.pi:
                 angle_diff = 2 * math.pi - angle_diff
-            # Check angular proximity and radial proximity
-            if angle_diff < 0.22 and abs(radius - placed_r) < 24:
+            # Outside labels have more space at larger radii
+            # 0.12 radians ~= 7 degrees - allows planets 7°+ apart to share radius
+            if angle_diff < 0.12 and abs(radius - placed_r) < 18:
                 return True
         return False
 
     for body, lon, deg in planet_positions:
         screen_angle = to_screen_angle(lon)
         current_r = planet_r
-        min_r = 30  # Don't place labels closer than this to center
 
-        # Keep moving inward until we find a clear spot
-        while has_collision(screen_angle, current_r, placed) and current_r > min_r:
-            current_r -= 26
+        # Keep moving outward until we find a clear spot
+        while has_collision(screen_angle, current_r, placed) and current_r < max_planet_r:
+            current_r += 22
 
         px = wheel_cx + current_r * math.cos(screen_angle)
         py = wheel_cy - current_r * math.sin(screen_angle)
 
         placed.append((screen_angle, current_r))
 
-        # Combined label: "☉19°" (thin space U+2009 between glyph and degree)
-        combined_label = f"{BODY_GLYPHS[body]}\u2009{deg}°"
-        dwg.add(dwg.text(combined_label, insert=(px, py + 6),
-                        text_anchor='middle', font_size='16px',
-                        font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
+        # Adaptive layout: stack at top/bottom (where horizontal space is tight),
+        # side-by-side on left/right (where there's more horizontal room)
+        # sin(angle) > 0.7 means roughly within 45° of vertical (top or bottom)
+        is_vertical_zone = abs(math.sin(screen_angle)) > 0.7
 
-    # Draw ASC tick on outer ring
+        glyph = BODY_GLYPHS[body]
+        deg_text = f"{deg}°"
+        font = 'Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif'
+
+        if is_vertical_zone:
+            # Stack: glyph on top, degree below
+            dwg.add(dwg.text(glyph, insert=(px, py),
+                            text_anchor='middle', font_size='15px',
+                            font_family=font, fill='black'))
+            dwg.add(dwg.text(deg_text, insert=(px, py + 12),
+                            text_anchor='middle', font_size='12px',
+                            font_family=font, fill='black'))
+        else:
+            # Side-by-side: glyph then degree (separate elements for consistent sizing)
+            dwg.add(dwg.text(glyph, insert=(px - 6, py + 5),
+                            text_anchor='middle', font_size='15px',
+                            font_family=font, fill='black'))
+            dwg.add(dwg.text(deg_text, insert=(px + 8, py + 5),
+                            text_anchor='middle', font_size='12px',
+                            font_family=font, fill='black'))
+
+    # Draw ASC tick and label at left edge (9 o'clock position)
     if 'ascendant' in positions:
         asc_rad = math.radians(180)
-        tick_start_x = wheel_cx + outer_r * math.cos(asc_rad)
-        tick_start_y = wheel_cy - outer_r * math.sin(asc_rad)
-        tick_end_x = wheel_cx + (outer_r + 10) * math.cos(asc_rad)
-        tick_end_y = wheel_cy - (outer_r + 10) * math.sin(asc_rad)
-        dwg.add(dwg.line(start=(tick_start_x, tick_start_y), end=(tick_end_x, tick_end_y),
+        # Tick mark extending outward
+        dwg.add(dwg.line(start=(wheel_cx - outer_r, wheel_cy),
+                        end=(wheel_cx - outer_r - 12, wheel_cy),
                         stroke='black', stroke_width=2))
-        label_x = wheel_cx + (degree_r + 8) * math.cos(asc_rad)
-        label_y = wheel_cy - (degree_r + 8) * math.sin(asc_rad)
-        dwg.add(dwg.text('ASC', insert=(label_x, label_y + 4),
+        asc_deg = positions['ascendant']['deg']
+        # Label to the left of tick
+        label_x = wheel_cx - outer_r - 35
+        label_y = wheel_cy
+        dwg.add(dwg.text('ASC', insert=(label_x, label_y - 2),
                         text_anchor='middle', font_size='11px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black',
                         font_weight='bold'))
-        asc_deg = positions['ascendant']['deg']
-        dwg.add(dwg.text(f"{asc_deg}°", insert=(label_x, label_y + 16),
+        dwg.add(dwg.text(f"{asc_deg}°", insert=(label_x, label_y + 10),
                         text_anchor='middle', font_size='11px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
 
-    # Draw MC tick on outer ring
+    # Draw MC tick and label outside wheel
     if 'medium_coeli' in positions:
         mc_rad = to_screen_angle(positions['medium_coeli']['lon'])
+        mc_deg = positions['medium_coeli']['deg']
+        # Tick mark extending outward
         tick_start_x = wheel_cx + outer_r * math.cos(mc_rad)
         tick_start_y = wheel_cy - outer_r * math.sin(mc_rad)
-        tick_end_x = wheel_cx + (outer_r + 10) * math.cos(mc_rad)
-        tick_end_y = wheel_cy - (outer_r + 10) * math.sin(mc_rad)
+        tick_end_x = wheel_cx + (outer_r + 12) * math.cos(mc_rad)
+        tick_end_y = wheel_cy - (outer_r + 12) * math.sin(mc_rad)
         dwg.add(dwg.line(start=(tick_start_x, tick_start_y), end=(tick_end_x, tick_end_y),
                         stroke='black', stroke_width=2))
-        label_x = wheel_cx + (degree_r + 8) * math.cos(mc_rad)
-        label_y = wheel_cy - (degree_r + 8) * math.sin(mc_rad)
-        dwg.add(dwg.text('MC', insert=(label_x, label_y + 4),
+        # Label beyond tick
+        mc_label_r = outer_r + 30
+        label_x = wheel_cx + mc_label_r * math.cos(mc_rad)
+        label_y = wheel_cy - mc_label_r * math.sin(mc_rad)
+        dwg.add(dwg.text('MC', insert=(label_x, label_y - 2),
                         text_anchor='middle', font_size='11px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black',
                         font_weight='bold'))
-        mc_deg = positions['medium_coeli']['deg']
-        dwg.add(dwg.text(f"{mc_deg}°", insert=(label_x, label_y + 16),
+        dwg.add(dwg.text(f"{mc_deg}°", insert=(label_x, label_y + 10),
                         text_anchor='middle', font_size='11px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
 

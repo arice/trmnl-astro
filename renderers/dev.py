@@ -123,9 +123,9 @@ def render(positions, config):
             angle_diff = abs(angle - placed_angle)
             if angle_diff > math.pi:
                 angle_diff = 2 * math.pi - angle_diff
-            # Outside labels have more space at larger radii, so angular threshold can be tighter
-            # Check angular proximity and radial proximity
-            if angle_diff < 0.20 and abs(radius - placed_r) < 20:
+            # Outside labels have more space at larger radii
+            # 0.12 radians ~= 7 degrees - allows planets 7°+ apart to share radius
+            if angle_diff < 0.12 and abs(radius - placed_r) < 18:
                 return True
         return False
 
@@ -156,14 +156,16 @@ def render(positions, config):
             dwg.add(dwg.text(glyph, insert=(px, py),
                             text_anchor='middle', font_size='15px',
                             font_family=font, fill='black'))
-            dwg.add(dwg.text(deg_text, insert=(px, py + 13),
+            dwg.add(dwg.text(deg_text, insert=(px, py + 12),
                             text_anchor='middle', font_size='12px',
                             font_family=font, fill='black'))
         else:
-            # Side-by-side: "☉19°"
-            combined_label = f"{glyph}\u2009{deg}°"
-            dwg.add(dwg.text(combined_label, insert=(px, py + 6),
+            # Side-by-side: glyph then degree (separate elements for consistent sizing)
+            dwg.add(dwg.text(glyph, insert=(px - 6, py + 5),
                             text_anchor='middle', font_size='15px',
+                            font_family=font, fill='black'))
+            dwg.add(dwg.text(deg_text, insert=(px + 8, py + 5),
+                            text_anchor='middle', font_size='12px',
                             font_family=font, fill='black'))
 
     # Draw ASC tick and label at left edge (9 o'clock position)

@@ -303,7 +303,7 @@ def render_chart_svg(positions):
         deg_y = wheel_cy - current_r * math.sin(angle)
         deg_label = f"{deg}°"
         dwg.add(dwg.text(deg_label, insert=(deg_x, deg_y + 4),
-                        text_anchor='middle', font_size='11px',
+                        text_anchor='middle', font_size='12px',
                         font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
 
         placed_degrees.append((angle, current_r))
@@ -444,7 +444,7 @@ def render_chart_svg(positions):
     time_str = now_local.strftime('%-I:%M %p').lower()
     timestamp = f"{date_str} {time_str}"
     dwg.add(dwg.text(f"{LOCATION['name']} | {timestamp}", insert=(legend_x + 130, 460),
-                    text_anchor='middle', font_size='13px',
+                    text_anchor='middle', font_size='14px',
                     font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
     return dwg.tostring()

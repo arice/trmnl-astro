@@ -117,26 +117,33 @@ def render(positions, config):
     planet_positions.sort(key=lambda x: x[1])
     placed = []
 
+    def has_collision(angle, radius, placed_list):
+        """Check if a label at (angle, radius) would overlap any placed label."""
+        for placed_angle, placed_r in placed_list:
+            angle_diff = abs(angle - placed_angle)
+            if angle_diff > math.pi:
+                angle_diff = 2 * math.pi - angle_diff
+            # Check angular proximity and radial proximity
+            if angle_diff < 0.22 and abs(radius - placed_r) < 24:
+                return True
+        return False
+
     for body, lon, deg in planet_positions:
         screen_angle = to_screen_angle(lon)
         current_r = planet_r
+        min_r = 30  # Don't place labels closer than this to center
 
-        # Radial stacking: push inward when labels would overlap
-        for placed_angle, placed_r in placed:
-            angle_diff = abs(screen_angle - placed_angle)
-            if angle_diff > math.pi:
-                angle_diff = 2 * math.pi - angle_diff
-            # Wider threshold (0.25 rad) for combined glyph+degree labels
-            if angle_diff < 0.25 and abs(current_r - placed_r) < 26:
-                current_r -= 28  # Larger step for breathing room
+        # Keep moving inward until we find a clear spot
+        while has_collision(screen_angle, current_r, placed) and current_r > min_r:
+            current_r -= 26
 
         px = wheel_cx + current_r * math.cos(screen_angle)
         py = wheel_cy - current_r * math.sin(screen_angle)
 
         placed.append((screen_angle, current_r))
 
-        # Combined label: "☉ 19°"
-        combined_label = f"{BODY_GLYPHS[body]} {deg}°"
+        # Combined label: "☉19°" (thin space U+2009 between glyph and degree)
+        combined_label = f"{BODY_GLYPHS[body]}\u2009{deg}°"
         dwg.add(dwg.text(combined_label, insert=(px, py + 6),
                         text_anchor='middle', font_size='16px',
                         font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
@@ -225,8 +232,8 @@ def render(positions, config):
 
             if show_retrograde and pos.get('retrograde', False):
                 dwg.add(dwg.text(RETROGRADE_GLYPH, insert=(legend_x + 168, y),
-                                font_size='14px', font_family='DejaVu Sans, Arial, sans-serif',
-                                fill='black', font_weight='bold'))
+                                font_size='14px', font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif',
+                                fill='black'))
 
             if show_house_numbers and body not in ['ascendant', 'medium_coeli']:
                 house_num = get_house_number(pos['sign'], asc_sign)

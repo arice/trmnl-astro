@@ -49,8 +49,8 @@ MOON_PHASES = [
     '\U0001F318',  # 🌘 Waning Crescent (315-360°)
 ]
 
-# Retrograde symbol
-RETROGRADE_GLYPH = 'R'
+# Retrograde symbol (℞ = U+211E, prescription symbol)
+RETROGRADE_GLYPH = '℞'
 
 # Colors for 2-bit grayscale e-ink display
 DARK_GRAY = '#555555'

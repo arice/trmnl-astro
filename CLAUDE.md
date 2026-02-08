@@ -50,15 +50,18 @@ The renderers create custom astrological wheel charts:
 - `outer_r` (175): Outer edge of sign ring
 - `inner_r` (150): Inner edge of sign ring
 - `sign_glyph_r` (163): Sign glyphs centered in ring
-- `planet_r` (115): Planet glyphs inside wheel
-- `degree_r` (195): Degree labels outside wheel
+- `planet_r` (125): Combined planet glyph + degree labels (e.g., "☉19°") inside wheel
+- `degree_r` (195): Used only for ASC/MC label positioning outside wheel
 - Tick marks on inner ring pointing inward
 
 **Key features:**
 - Ascendant always at 9 o'clock (wheel rotates)
-- Radial collision avoidance (planets stack inward, not angularly)
+- Combined labels: glyph + degree in single label (e.g., "☉19°") with thin space (U+2009)
+- Improved collision avoidance: `has_collision()` with while loop finds truly clear spots
+- Radial stacking: labels move inward to avoid overlaps
 - Whole sign houses (12 equal divisions)
-- Uses Noto Sans Symbols 2 font for glyphs (installed in workflow)
+- Font stack: Apple Symbols (macOS), Noto Sans Symbols 2 (CI), DejaVu Sans (fallback)
+- Retrograde indicator uses ℞ glyph (U+211E)
 
 ## Running Locally
 
@@ -74,8 +77,8 @@ pip install requests cairosvg pillow svgwrite pyyaml
 python test_chart.py
 open test_chart_prod.png test_chart_dev.png
 
-# Note: Astrological glyphs may show as squares locally
-# unless you install Noto Sans Symbols 2 font
+# Note: On macOS, glyphs render via Apple Symbols font
+# On Linux/CI, Noto Sans Symbols 2 is installed by workflow
 ```
 
 ## Development Workflow

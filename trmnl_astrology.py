@@ -255,7 +255,7 @@ def render_chart_svg(positions):
     line_height = 30
 
     # Header
-    dwg.add(dwg.text('Current Transits', insert=(legend_x + 100, legend_y_start),
+    dwg.add(dwg.text('Planetary Positions', insert=(legend_x + 100, legend_y_start),
                     text_anchor='middle', font_size='18px',
                     font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
                     font_weight='bold'))

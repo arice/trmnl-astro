@@ -321,7 +321,7 @@ def render_chart_svg(positions):
     # === RIGHT SIDE: Legend Panel ===
     legend_x = 500
     legend_y_start = 25
-    line_height = 27  # Reduced to fit 14 items above timestamp
+    line_height = 30  # Reduced to fit 14 items above timestamp
 
     # Header
     dwg.add(dwg.text('Planetary Positions', insert=(legend_x + 100, legend_y_start),
@@ -349,12 +349,12 @@ def render_chart_svg(positions):
                             fill='black', font_weight='bold'))
 
             # Sign glyph
-            dwg.add(dwg.text(sign_glyph, insert=(legend_x + 55, y),
+            dwg.add(dwg.text(sign_glyph, insert=(legend_x + 60, y),
                             font_size='20px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black'))
 
             # Degrees
-            dwg.add(dwg.text(deg_str, insert=(legend_x + 95, y),
+            dwg.add(dwg.text(deg_str, insert=(legend_x + 100, y),
                             font_size='18px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black'))
 

@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """
 Local test script for chart rendering.
-Run: pip install svgwrite cairosvg pillow && python test_chart.py
+Run: pip install svgwrite cairosvg pillow pyyaml && python test_chart.py
 """
 
 # Import the main module functions
 from trmnl_astrology import render_chart_svg, svg_to_png_bw
 
 # Mock position data (similar to real positions)
+# Includes retrograde flags for testing (Jupiter, Saturn, Uranus, Neptune, Pluto can be retrograde)
 MOCK_POSITIONS = {
-    'sun': {'lon': 319.5, 'sign': 10, 'deg': 19, 'min': 31},
-    'moon': {'lon': 216.1, 'sign': 7, 'deg': 6, 'min': 4},
-    'mercury': {'lon': 332.4, 'sign': 10, 'deg': 2, 'min': 21},
-    'venus': {'lon': 327.3, 'sign': 10, 'deg': 27, 'min': 20},
-    'mars': {'lon': 312.5, 'sign': 10, 'deg': 12, 'min': 27},
-    'jupiter': {'lon': 136.6, 'sign': 4, 'deg': 16, 'min': 36},
-    'saturn': {'lon': 359.4, 'sign': 11, 'deg': 29, 'min': 23},
-    'uranus': {'lon': 57.5, 'sign': 1, 'deg': 27, 'min': 28},
-    'neptune': {'lon': 0.35, 'sign': 11, 'deg': 0, 'min': 21},
-    'pluto': {'lon': 303.9, 'sign': 10, 'deg': 3, 'min': 55},
-    'mean_north_lunar_node': {'lon': 355.1, 'sign': 11, 'deg': 25, 'min': 6},
-    'mean_south_lunar_node': {'lon': 175.1, 'sign': 5, 'deg': 25, 'min': 6},
-    'ascendant': {'lon': 245.0, 'sign': 8, 'deg': 5, 'min': 2},
-    'medium_coeli': {'lon': 171.3, 'sign': 5, 'deg': 21, 'min': 17},
+    'sun': {'lon': 319.5, 'sign': 10, 'deg': 19, 'min': 31, 'retrograde': False},
+    'moon': {'lon': 216.1, 'sign': 7, 'deg': 6, 'min': 4, 'retrograde': False},
+    'mercury': {'lon': 332.4, 'sign': 10, 'deg': 2, 'min': 21, 'retrograde': True},  # Rx for testing
+    'venus': {'lon': 327.3, 'sign': 10, 'deg': 27, 'min': 20, 'retrograde': False},
+    'mars': {'lon': 312.5, 'sign': 10, 'deg': 12, 'min': 27, 'retrograde': False},
+    'jupiter': {'lon': 136.6, 'sign': 4, 'deg': 16, 'min': 36, 'retrograde': True},  # Rx for testing
+    'saturn': {'lon': 359.4, 'sign': 11, 'deg': 29, 'min': 23, 'retrograde': False},
+    'uranus': {'lon': 57.5, 'sign': 1, 'deg': 27, 'min': 28, 'retrograde': True},   # Rx for testing
+    'neptune': {'lon': 0.35, 'sign': 11, 'deg': 0, 'min': 21, 'retrograde': False},
+    'pluto': {'lon': 303.9, 'sign': 10, 'deg': 3, 'min': 55, 'retrograde': False},
+    'mean_north_lunar_node': {'lon': 355.1, 'sign': 11, 'deg': 25, 'min': 6, 'retrograde': False},
+    'ascendant': {'lon': 245.0, 'sign': 8, 'deg': 5, 'min': 2, 'retrograde': False},
+    'medium_coeli': {'lon': 171.3, 'sign': 5, 'deg': 21, 'min': 17, 'retrograde': False},
 }
 
 if __name__ == "__main__":

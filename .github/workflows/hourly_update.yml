@@ -28,7 +28,7 @@ jobs:
           curl -L -o ~/.local/share/fonts/NotoSansSymbols2-Regular.ttf \
             "https://github.com/notofonts/symbols/releases/download/NotoSansSymbols2-v2.008/NotoSansSymbols2-Regular.ttf"
           fc-cache -fv
-          pip install requests cairosvg pillow svgwrite
+          pip install requests cairosvg pillow svgwrite pyyaml
       
       - name: Generate and update chart
         env:

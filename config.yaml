@@ -1,0 +1,35 @@
+# TRMNL Astrology Chart Configuration
+
+# Location settings
+location:
+  name: "Philadelphia"
+  city: "Philadelphia"
+  nation: "US"
+  longitude: -75.1652
+  latitude: 39.9526
+  timezone: "America/New_York"
+
+# Bodies to display (in order for legend)
+# Available: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto,
+#            mean_north_lunar_node, mean_south_lunar_node, ascendant, medium_coeli
+bodies:
+  - sun
+  - moon
+  - mercury
+  - venus
+  - mars
+  - jupiter
+  - saturn
+  - uranus
+  - neptune
+  - pluto
+  - mean_north_lunar_node
+  - mean_south_lunar_node
+  - ascendant
+  - medium_coeli
+
+# Display options
+display:
+  show_retrograde: true      # Show ℞ symbol for retrograde planets
+  show_moon_phase: true      # Show moon phase icon
+  show_house_numbers: true   # Show house number in legend

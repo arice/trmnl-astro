@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 """
 TRMNL Astrology Current Chart Updater
-Fetches current planetary positions for Philadelphia and renders a custom
-wheel + legend chart optimized for e-ink display.
+Fetches current planetary positions and renders a custom wheel + legend chart
+optimized for e-ink display.
 """
 
 import os
 import sys
 import math
 import requests
+import yaml
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
+# Load configuration from config.yaml
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.yaml')
+with open(CONFIG_PATH, 'r') as f:
+    CONFIG = yaml.safe_load(f)
 
 # Configuration from environment variables
 ASTROLOGER_API_URL = os.environ.get('ASTROLOGER_API_URL')
@@ -25,20 +31,23 @@ TRMNL_WEBHOOK_URL = f"https://usetrmnl.com/api/custom_plugins/{PLUGIN_UUID}"
 # Output path for PNG
 OUTPUT_PATH = "docs/chart.png"
 
-# Current chart request payload (Philadelphia)
+# Location from config
+LOCATION = CONFIG['location']
+
+# Build chart payload from config
 CHART_PAYLOAD = {
     "subject": {
-        "name": "Philadelphia Now",
+        "name": f"{LOCATION['name']} Now",
         "year": None,
         "month": None,
         "day": None,
         "hour": None,
         "minute": None,
-        "city": "Philadelphia",
-        "nation": "US",
-        "longitude": -75.1652,
-        "latitude": 39.9526,
-        "timezone": "America/New_York"
+        "city": LOCATION['city'],
+        "nation": LOCATION['nation'],
+        "longitude": LOCATION['longitude'],
+        "latitude": LOCATION['latitude'],
+        "timezone": LOCATION['timezone']
     }
 }
 
@@ -75,22 +84,42 @@ SIGN_GLYPHS = [
     '\u2653',  # ♓ Pisces
 ]
 
-# Bodies to display (in order for legend)
-# API field names -> display names
-BODIES = [
+# Moon phase symbols (8 phases)
+MOON_PHASES = [
+    '\U0001F311',  # 🌑 New Moon (0-45°)
+    '\U0001F312',  # 🌒 Waxing Crescent (45-90°)
+    '\U0001F313',  # 🌓 First Quarter (90-135°)
+    '\U0001F314',  # 🌔 Waxing Gibbous (135-180°)
+    '\U0001F315',  # 🌕 Full Moon (180-225°)
+    '\U0001F316',  # 🌖 Waning Gibbous (225-270°)
+    '\U0001F317',  # 🌗 Last Quarter (270-315°)
+    '\U0001F318',  # 🌘 Waning Crescent (315-360°)
+]
+
+# Retrograde symbol (using simple R for compatibility)
+RETROGRADE_GLYPH = 'R'
+
+# Bodies to display (from config)
+BODIES = CONFIG.get('bodies', [
     'sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter',
     'saturn', 'uranus', 'neptune', 'pluto', 'mean_north_lunar_node',
     'mean_south_lunar_node', 'ascendant', 'medium_coeli'
-]
+])
+
+# Display options from config
+DISPLAY = CONFIG.get('display', {})
+SHOW_RETROGRADE = DISPLAY.get('show_retrograde', True)
+SHOW_MOON_PHASE = DISPLAY.get('show_moon_phase', True)
+SHOW_HOUSE_NUMBERS = DISPLAY.get('show_house_numbers', True)
 
 
 def get_positions():
     """Fetch position data from Astrologer API /api/v5/chart-data/birth-chart endpoint"""
-    print("Fetching current planetary positions for Philadelphia...")
+    print(f"Fetching current planetary positions for {LOCATION['name']}...")
 
-    # Get current time in Philadelphia timezone
-    philly_tz = ZoneInfo("America/New_York")
-    now = datetime.now(philly_tz)
+    # Get current time in configured timezone
+    local_tz = ZoneInfo(LOCATION['timezone'])
+    now = datetime.now(local_tz)
 
     CHART_PAYLOAD["subject"]["year"] = now.year
     CHART_PAYLOAD["subject"]["month"] = now.month
@@ -98,7 +127,7 @@ def get_positions():
     CHART_PAYLOAD["subject"]["hour"] = now.hour
     CHART_PAYLOAD["subject"]["minute"] = now.minute
 
-    print(f"Time (Philadelphia): {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    print(f"Time ({LOCATION['name']}): {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
 
     response = requests.post(
         f"{ASTROLOGER_API_URL}/api/v5/chart-data/birth-chart",
@@ -135,6 +164,24 @@ def get_positions():
 
     print(f"Retrieved positions for {len(positions)} bodies")
     return positions
+
+
+def get_moon_phase(positions):
+    """Calculate moon phase from Sun-Moon angle (0-7 index)"""
+    if 'sun' not in positions or 'moon' not in positions:
+        return None
+    sun_lon = positions['sun']['lon']
+    moon_lon = positions['moon']['lon']
+    # Moon's elongation from Sun (0-360°)
+    elongation = (moon_lon - sun_lon) % 360
+    # Divide into 8 phases (45° each)
+    phase_index = int(elongation / 45) % 8
+    return phase_index
+
+
+def get_house_number(body_sign, asc_sign):
+    """Calculate whole sign house number (1-12) from planet and ASC signs"""
+    return ((body_sign - asc_sign) % 12) + 1
 
 
 def render_chart_svg(positions):
@@ -319,19 +366,28 @@ def render_chart_svg(positions):
                         font_weight='bold'))
 
     # === RIGHT SIDE: Legend Panel ===
-    legend_x = 500
+    legend_x = 470
     legend_y_start = 25
     line_height = 30  # Reduced to fit 14 items above timestamp
 
-    # Header
-    dwg.add(dwg.text('Planetary Positions', insert=(legend_x + 100, legend_y_start),
+    # Get ASC sign for house calculations
+    asc_sign = positions.get('ascendant', {}).get('sign', 0)
+
+    # Header with moon phase
+    header_text = 'Planetary Positions'
+    if SHOW_MOON_PHASE:
+        moon_phase_idx = get_moon_phase(positions)
+        if moon_phase_idx is not None:
+            header_text = f'{MOON_PHASES[moon_phase_idx]} {header_text}'
+
+    dwg.add(dwg.text(header_text, insert=(legend_x + 130, legend_y_start),
                     text_anchor='middle', font_size='18px',
                     font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
                     font_weight='bold'))
 
     # Divider line
     dwg.add(dwg.line(start=(legend_x, legend_y_start + 10),
-                    end=(legend_x + 200, legend_y_start + 10),
+                    end=(legend_x + 260, legend_y_start + 10),
                     stroke='black', stroke_width=1))
 
     # List each body with position
@@ -358,15 +414,28 @@ def render_chart_svg(positions):
                             font_size='18px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black'))
 
+            # House number (not for ASC/MC - they define the houses)
+            if SHOW_HOUSE_NUMBERS and body not in ['ascendant', 'medium_coeli']:
+                house_num = get_house_number(pos['sign'], asc_sign)
+                dwg.add(dwg.text(f'{house_num}H', insert=(legend_x + 175, y),
+                                font_size='16px', font_family='DejaVu Sans, Arial, sans-serif',
+                                fill='black'))
+
+            # Retrograde indicator (for planets that can be retrograde)
+            if SHOW_RETROGRADE and pos.get('retrograde', False):
+                dwg.add(dwg.text(RETROGRADE_GLYPH, insert=(legend_x + 215, y),
+                                font_size='14px', font_family='DejaVu Sans, Arial, sans-serif',
+                                fill='black', font_weight='bold'))
+
             y += line_height
 
-    # Timestamp at bottom (Philadelphia time)
-    philly_tz = ZoneInfo("America/New_York")
-    now_local = datetime.now(philly_tz)
+    # Timestamp at bottom (using configured timezone)
+    local_tz = ZoneInfo(LOCATION['timezone'])
+    now_local = datetime.now(local_tz)
     date_str = now_local.strftime('%B %d %Y')
     time_str = now_local.strftime('%-I:%M %p').lower()
     timestamp = f"{date_str} {time_str}"
-    dwg.add(dwg.text(f'Philadelphia | {timestamp}', insert=(legend_x + 100, 460),
+    dwg.add(dwg.text(f"{LOCATION['name']} | {timestamp}", insert=(legend_x + 130, 460),
                     text_anchor='middle', font_size='12px',
                     font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 

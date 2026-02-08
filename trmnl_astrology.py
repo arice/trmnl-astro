@@ -175,7 +175,7 @@ def get_moon_phase(positions):
     # Moon's elongation from Sun (0-360°)
     elongation = (moon_lon - sun_lon) % 360
     # Divide into 8 phases (45° each)
-    phase_index = int(elongation / 45) % 8
+    phase_index = int((elongation + 12) / 45) % 8 # add 12 to shift visual phase a little bit early to better reflect human perception
     return phase_index
 
 
@@ -444,7 +444,7 @@ def render_chart_svg(positions):
     time_str = now_local.strftime('%-I:%M %p').lower()
     timestamp = f"{date_str} {time_str}"
     dwg.add(dwg.text(f"{LOCATION['name']} | {timestamp}", insert=(legend_x + 130, 460),
-                    text_anchor='middle', font_size='12px',
+                    text_anchor='middle', font_size='13px',
                     font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
     return dwg.tostring()

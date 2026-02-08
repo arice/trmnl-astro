@@ -184,6 +184,14 @@ def get_house_number(body_sign, asc_sign):
     return ((body_sign - asc_sign) % 12) + 1
 
 
+def ordinal(n):
+    """Return ordinal string for a number (1st, 2nd, 3rd, etc.)"""
+    if 11 <= n <= 13:
+        return f"{n}th"
+    suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+    return f"{n}{suffix}"
+
+
 def render_chart_svg(positions):
     """Generate 800x480 wheel + legend SVG optimized for e-ink"""
     import svgwrite
@@ -414,18 +422,18 @@ def render_chart_svg(positions):
                             font_size='18px', font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif',
                             fill='black'))
 
+            # Retrograde indicator (right after degrees)
+            if SHOW_RETROGRADE and pos.get('retrograde', False):
+                dwg.add(dwg.text(RETROGRADE_GLYPH, insert=(legend_x + 168, y),
+                                font_size='14px', font_family='DejaVu Sans, Arial, sans-serif',
+                                fill='black', font_weight='bold'))
+
             # House number (not for ASC/MC - they define the houses)
             if SHOW_HOUSE_NUMBERS and body not in ['ascendant', 'medium_coeli']:
                 house_num = get_house_number(pos['sign'], asc_sign)
-                dwg.add(dwg.text(f'{house_num}H', insert=(legend_x + 175, y),
+                dwg.add(dwg.text(ordinal(house_num), insert=(legend_x + 195, y),
                                 font_size='16px', font_family='DejaVu Sans, Arial, sans-serif',
                                 fill='black'))
-
-            # Retrograde indicator (for planets that can be retrograde)
-            if SHOW_RETROGRADE and pos.get('retrograde', False):
-                dwg.add(dwg.text(RETROGRADE_GLYPH, insert=(legend_x + 215, y),
-                                font_size='14px', font_family='DejaVu Sans, Arial, sans-serif',
-                                fill='black', font_weight='bold'))
 
             y += line_height
 

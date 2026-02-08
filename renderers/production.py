@@ -1,9 +1,11 @@
 """
-Production chart renderer: Outside labels with adaptive stacking.
+Production chart renderer: Outside labels with outward ticks and tighter collision detection.
 
 Labels placed outside wheel with adaptive layout:
 - Stacked (glyph above, degree below) at top/bottom of wheel
 - Side-by-side on left/right sides of wheel
+- Tick marks point outward toward labels
+- Tighter collision detection (0.08 rad / ~4.5°) for closer label placement
 
 Output: SVG string (800x480)
 """
@@ -21,18 +23,7 @@ from .base import (
 
 def render(positions, config):
     """
-    Experimental chart renderer.
-
-    Currently: Copy of production layout.
-    Modify this to try new designs!
-
-    Ideas to try:
-    - Different wheel/legend proportions
-    - Aspect lines between planets
-    - Alternative color schemes (for grayscale)
-    - Different glyph sizes or fonts
-    - House cusp indicators
-    - Element/modality groupings
+    Production chart renderer with outside labels.
     """
     location = config['location']
     bodies = config.get('bodies', list(BODY_GLYPHS.keys()))
@@ -53,8 +44,8 @@ def render(positions, config):
     sign_glyph_r = 143
     planet_r = 185     # Labels outside wheel (beyond outer_r)
     max_planet_r = 230 # Maximum outward radius for labels
-    tick_outer = outer_r
-    tick_inner = outer_r - 8
+    tick_inner = outer_r
+    tick_outer = outer_r + 10  # Ticks point outward toward labels
 
     # Calculate rotation so Ascendant is at 9 o'clock
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
@@ -121,8 +112,8 @@ def render(positions, config):
             if angle_diff > math.pi:
                 angle_diff = 2 * math.pi - angle_diff
             # Outside labels have more space at larger radii
-            # 0.12 radians ~= 7 degrees - allows planets 7°+ apart to share radius
-            if angle_diff < 0.12 and abs(radius - placed_r) < 18:
+            # 0.08 radians ~= 4.5 degrees - allows planets 5°+ apart to share radius
+            if angle_diff < 0.08 and abs(radius - placed_r) < 16:
                 return True
         return False
 

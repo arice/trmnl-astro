@@ -23,12 +23,22 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install requests cairosvg
+          pip install requests cairosvg pillow
       
-      - name: Update TRMNL chart
+      - name: Generate and update chart
         env:
           ASTROLOGER_API_URL: ${{ secrets.ASTROLOGER_API_URL }}
           TRMNL_API_KEY: ${{ secrets.TRMNL_API_KEY }}
           PLUGIN_UUID: ${{ secrets.PLUGIN_UUID }}
+          GH_USERNAME: ${{ secrets.GH_USERNAME }}
+          GH_REPO: ${{ secrets.GH_REPO }}
         run: |
           python trmnl_astrology.py
+      
+      - name: Commit and push chart
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add docs/chart.png
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update chart: $(date '+%Y-%m-%d %H:%M UTC')"
+          git push

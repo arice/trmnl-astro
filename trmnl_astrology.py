@@ -151,10 +151,12 @@ def render_chart_svg(positions):
     outer_r = 175          # Outer edge of sign ring
     inner_r = 150          # Inner edge of sign ring (main wheel boundary)
     sign_glyph_r = 163     # Sign glyphs centered in the ring
-    planet_r = 115         # Planet glyphs inside the wheel
+    planet_r = 125         # Planet glyphs inside the wheel (closer to ticks)
     degree_r = 195         # Degree labels OUTSIDE the wheel
+    degree_r_min = 180     # Minimum radius for degree labels (pushed inward)
+    degree_r_max = 210     # Maximum radius (avoid clipping at edges)
     tick_outer = inner_r   # Ticks attach to inner ring
-    tick_inner = inner_r - 12  # Ticks extend inward toward planet glyphs
+    tick_inner = inner_r - 9  # Ticks extend inward toward planet glyphs (9px)
 
     # Calculate rotation so Ascendant is at 9 o'clock (180° screen angle)
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
@@ -194,14 +196,14 @@ def render_chart_svg(positions):
                         text_anchor='middle', font_size='18px',
                         font_family='Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
 
-    # Draw tick marks, planet glyphs, and degrees on outer ring area
+    # Draw tick marks first
     for body in BODIES:
         if body in positions and body not in ['ascendant', 'medium_coeli']:
             pos = positions[body]
             lon = pos['lon']
             angle = to_screen_angle(lon)
 
-            # Tick mark on outer ring
+            # Tick mark on inner ring
             t1x = wheel_cx + tick_inner * math.cos(angle)
             t1y = wheel_cy - tick_inner * math.sin(angle)
             t2x = wheel_cx + tick_outer * math.cos(angle)
@@ -209,13 +211,47 @@ def render_chart_svg(positions):
             dwg.add(dwg.line(start=(t1x, t1y), end=(t2x, t2y),
                             stroke='black', stroke_width=2))
 
-            # Degree label
-            deg_x = wheel_cx + degree_r * math.cos(angle)
-            deg_y = wheel_cy - degree_r * math.sin(angle)
-            deg_label = f"{pos['deg']}°"
-            dwg.add(dwg.text(deg_label, insert=(deg_x, deg_y + 3),
-                            text_anchor='middle', font_size='9px',
-                            font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
+    # Draw degree labels with collision avoidance
+    degree_labels = []
+    for body in BODIES:
+        if body in positions and body not in ['ascendant', 'medium_coeli']:
+            pos = positions[body]
+            lon = pos['lon']
+            degree_labels.append((lon, pos['deg']))
+
+    # Sort by longitude for collision detection
+    degree_labels.sort(key=lambda x: x[0])
+    placed_degrees = []  # (angle, radius) of placed labels
+
+    for lon, deg in degree_labels:
+        angle = to_screen_angle(lon)
+        current_r = degree_r
+
+        # Check for collisions - if too close angularly, adjust radius
+        for placed_angle, placed_r in placed_degrees:
+            angle_diff = abs(angle - placed_angle)
+            if angle_diff > math.pi:
+                angle_diff = 2 * math.pi - angle_diff
+            # If within ~8 degrees and same radius band, need to offset
+            if angle_diff < 0.14 and abs(current_r - placed_r) < 12:
+                # Check if pushing outward would clip at image edge
+                test_x = wheel_cx + (current_r + 14) * math.cos(angle)
+                test_y = wheel_cy - (current_r + 14) * math.sin(angle)
+                if test_x < 15 or test_x > 785 or test_y < 15 or test_y > 465:
+                    # Would clip - push inward instead
+                    current_r = max(degree_r_min, current_r - 14)
+                else:
+                    # Safe to push outward
+                    current_r = min(degree_r_max, current_r + 14)
+
+        deg_x = wheel_cx + current_r * math.cos(angle)
+        deg_y = wheel_cy - current_r * math.sin(angle)
+        deg_label = f"{deg}°"
+        dwg.add(dwg.text(deg_label, insert=(deg_x, deg_y + 4),
+                        text_anchor='middle', font_size='11px',
+                        font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
+
+        placed_degrees.append((angle, current_r))
 
     # Place planet glyphs on wheel at their longitudes
     planet_positions = []

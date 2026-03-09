@@ -31,7 +31,7 @@ MOCK_POSITIONS = {
     'pluto': {'lon': 303.9, 'sign': 10, 'deg': 3, 'min': 55, 'retrograde': False},
     'mean_north_lunar_node': {'lon': 355.1, 'sign': 11, 'deg': 25, 'min': 6, 'retrograde': False},
     'ascendant': {'lon': 135.0, 'sign': 4, 'deg': 15, 'min': 0, 'retrograde': False},
-    'medium_coeli': {'lon': 171.3, 'sign': 5, 'deg': 21, 'min': 17, 'retrograde': False},
+    'medium_coeli': {'lon': 45.0, 'sign': 1, 'deg': 15, 'min': 0, 'retrograde': False},
 }
 
 

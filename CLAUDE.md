@@ -93,6 +93,18 @@ To iterate on chart designs without affecting production:
 The dev chart is also published to GitHub Pages at:
 `https://<username>.github.io/<repo>/dev-chart.png`
 
+### Testing with live data
+
+Each Actions run saves `docs/last_positions.json` to the repo. After a `git pull`,
+`test_chart.py` will automatically use those real positions instead of mock data —
+useful for verifying fixes against actual planetary configurations.
+
+### Pushing changes
+
+**Always `git pull --rebase` before pushing.** GitHub Actions commits new chart PNGs
+every 15 minutes, so the remote is almost certainly ahead of your local branch. A
+rebase pull keeps history clean and avoids merge commits.
+
 ## Required GitHub Secrets
 
 - `ASTROLOGER_API_URL` - Astrologer API endpoint (e.g., http://your-droplet:27391)

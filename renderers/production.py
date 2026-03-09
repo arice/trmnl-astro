@@ -103,7 +103,10 @@ def render(positions, config):
             planet_positions.append((body, pos['lon'], pos['deg']))
 
     planet_positions.sort(key=lambda x: x[1])
-    placed = []
+
+    # Pre-register MC so planets avoid it via radial push
+    mc_screen_angle = to_screen_angle(positions['medium_coeli']['lon']) if 'medium_coeli' in positions else None
+    placed = [(mc_screen_angle, planet_r)] if mc_screen_angle is not None else []
 
     def has_collision(angle, radius, placed_list):
         """Check if a label at (angle, radius) would overlap any placed label."""
@@ -139,6 +142,13 @@ def render(positions, config):
         px = wheel_cx + current_r * math.cos(screen_angle)
         py = wheel_cy - current_r * math.sin(screen_angle)
 
+        # Avoid collision with ASC label (always at left edge: x≈30, y=240)
+        asc_label_x = wheel_cx - outer_r - 35
+        asc_label_y = wheel_cy
+        if abs(px - asc_label_x) < 35 and abs(py - asc_label_y) < 18:
+            nudge = 20
+            py += nudge if screen_angle > math.pi else -nudge
+
         placed.append((screen_angle, current_r))
 
         # Adaptive layout: stack at top/bottom (where horizontal space is tight),
@@ -160,10 +170,10 @@ def render(positions, config):
                             font_family=font, fill='black'))
         else:
             # Side-by-side: glyph then degree (separate elements for consistent sizing)
-            dwg.add(dwg.text(glyph, insert=(px - 6, py + 5),
+            dwg.add(dwg.text(glyph, insert=(px - 7, py + 5),
                             text_anchor='middle', font_size='15px',
                             font_family=font, fill='black'))
-            dwg.add(dwg.text(deg_text, insert=(px + 8, py + 5),
+            dwg.add(dwg.text(deg_text, insert=(px + 9, py + 5),
                             text_anchor='middle', font_size='12px',
                             font_family=font, fill='black'))
 

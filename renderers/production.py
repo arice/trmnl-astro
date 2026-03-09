@@ -124,8 +124,9 @@ def render(positions, config):
                 # Both on sides - only collide if very close (< 3°)
                 threshold = 0.05
             else:
-                # Top/bottom or mixed - need more spacing
-                threshold = 0.08
+                # Top/bottom or mixed - stacked labels are ~27px tall at r=185,
+                # so need ~0.15 rad (8.6°) of angular separation
+                threshold = 0.15
 
             if angle_diff < threshold and abs(radius - placed_r) < 16:
                 return True
@@ -169,12 +170,12 @@ def render(positions, config):
                             text_anchor='middle', font_size='12px',
                             font_family=font, fill='black'))
         else:
-            # Side-by-side: glyph then degree (separate elements for consistent sizing)
-            dwg.add(dwg.text(glyph, insert=(px - 7, py + 5),
-                            text_anchor='middle', font_size='15px',
+            # Side-by-side: right-align glyph, left-align degree with fixed gap
+            dwg.add(dwg.text(glyph, insert=(px - 2, py + 5),
+                            text_anchor='end', font_size='15px',
                             font_family=font, fill='black'))
-            dwg.add(dwg.text(deg_text, insert=(px + 9, py + 5),
-                            text_anchor='middle', font_size='12px',
+            dwg.add(dwg.text(deg_text, insert=(px + 2, py + 5),
+                            text_anchor='start', font_size='12px',
                             font_family=font, fill='black'))
 
     # Draw ASC tick and label at left edge (9 o'clock position)

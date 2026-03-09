@@ -6,6 +6,7 @@ Run: pip install svgwrite cairosvg pillow pyyaml && python test_chart.py
 Generates both production and dev charts using mock data.
 """
 
+import os
 import yaml
 import cairosvg
 from PIL import Image
@@ -17,8 +18,7 @@ from renderers import render_production, render_dev
 with open('config.yaml', 'r') as f:
     CONFIG = yaml.safe_load(f)
 
-# Mock position data (similar to real positions)
-MOCK_POSITIONS = {
+_FALLBACK_POSITIONS = {
     'sun': {'lon': 319.5, 'sign': 10, 'deg': 19, 'min': 31, 'retrograde': False},
     'moon': {'lon': 216.1, 'sign': 7, 'deg': 6, 'min': 4, 'retrograde': False},
     'mercury': {'lon': 333.43, 'sign': 11, 'deg': 3, 'min': 26, 'retrograde': True},
@@ -33,6 +33,16 @@ MOCK_POSITIONS = {
     'ascendant': {'lon': 135.0, 'sign': 4, 'deg': 15, 'min': 0, 'retrograde': False},
     'medium_coeli': {'lon': 45.0, 'sign': 1, 'deg': 15, 'min': 0, 'retrograde': False},
 }
+
+import json
+_POSITIONS_FILE = 'docs/last_positions.json'
+if os.path.exists(_POSITIONS_FILE):
+    with open(_POSITIONS_FILE) as f:
+        MOCK_POSITIONS = json.load(f)
+    print(f"Using live positions from {_POSITIONS_FILE}")
+else:
+    MOCK_POSITIONS = _FALLBACK_POSITIONS
+    print("Using mock positions (docs/last_positions.json not found)")
 
 
 def svg_to_png(svg_content, output_path):

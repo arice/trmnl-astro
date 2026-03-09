@@ -115,6 +115,13 @@ def get_positions():
             }
 
     print(f"Retrieved positions for {len(positions)} bodies")
+
+    # Save positions for local testing
+    import json
+    positions_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs/last_positions.json")
+    with open(positions_path, "w") as f:
+        json.dump(positions, f, indent=2)
+
     return positions
 
 

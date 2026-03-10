@@ -95,14 +95,14 @@ The dev chart is also published to GitHub Pages at:
 
 ### Testing with live data
 
-Each Actions run saves `docs/last_positions.json` to the repo. After a `git pull`,
-`test_chart.py` will automatically use those real positions instead of mock data —
-useful for verifying fixes against actual planetary configurations.
+Each Actions run saves `docs/last_positions.json` and commits it to the repo.
+`test_chart.py` fetches it automatically from GitHub Pages — no `git pull` needed.
+Falls back to hardcoded mock positions if the URL is unreachable.
 
 ### Pushing changes
 
 **Always `git pull --rebase` before pushing.** GitHub Actions commits new chart PNGs
-every 15 minutes, so the remote is almost certainly ahead of your local branch. A
+every 5 minutes, so the remote is almost certainly ahead of your local branch. A
 rebase pull keeps history clean and avoids merge commits.
 
 ## Required GitHub Secrets

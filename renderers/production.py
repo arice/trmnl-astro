@@ -137,8 +137,9 @@ def render(positions, config):
         current_r = planet_r
 
         # Keep moving outward until we find a clear spot
+        # Step must be >= label height (~26px) to avoid overlap when stacking
         while has_collision(screen_angle, current_r, placed) and current_r < max_planet_r:
-            current_r += 22
+            current_r += 26
 
         px = wheel_cx + current_r * math.cos(screen_angle)
         py = wheel_cy - current_r * math.sin(screen_angle)

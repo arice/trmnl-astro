@@ -43,7 +43,7 @@ def render(positions, config):
     inner_r = 130
     sign_glyph_r = 143
     planet_r = 185     # Labels outside wheel (beyond outer_r)
-    max_planet_r = 230 # Maximum outward radius for labels
+    max_planet_r = 250 # Maximum outward radius for labels
     tick_inner = outer_r
     tick_outer = outer_r + 10  # Ticks point outward toward labels
 

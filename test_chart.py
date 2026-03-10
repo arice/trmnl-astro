@@ -35,14 +35,23 @@ _FALLBACK_POSITIONS = {
 }
 
 import json
+import urllib.request
+
 _POSITIONS_FILE = 'docs/last_positions.json'
+_PAGES_URL = 'https://arice.github.io/trmnl-astro/last_positions.json'
+
 if os.path.exists(_POSITIONS_FILE):
     with open(_POSITIONS_FILE) as f:
         MOCK_POSITIONS = json.load(f)
     print(f"Using live positions from {_POSITIONS_FILE}")
 else:
-    MOCK_POSITIONS = _FALLBACK_POSITIONS
-    print("Using mock positions (docs/last_positions.json not found)")
+    try:
+        with urllib.request.urlopen(_PAGES_URL, timeout=5) as r:
+            MOCK_POSITIONS = json.load(r)
+        print(f"Using live positions from {_PAGES_URL}")
+    except Exception:
+        MOCK_POSITIONS = _FALLBACK_POSITIONS
+        print("Using mock positions (could not load live data)")
 
 
 def svg_to_png(svg_content, output_path):

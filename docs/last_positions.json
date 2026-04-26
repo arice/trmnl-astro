@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 36.62224046736679,
+    "lon": 36.64926512291123,
     "sign": 1,
     "deg": 6,
-    "min": 37,
-    "retrograde": false
-  },
-  "moon": {
-    "lon": 160.64490034565355,
-    "sign": 5,
-    "deg": 10,
     "min": 38,
     "retrograde": false
   },
+  "moon": {
+    "lon": 161.00415647408417,
+    "sign": 5,
+    "deg": 11,
+    "min": 0,
+    "retrograde": false
+  },
   "mercury": {
-    "lon": 18.49757522794173,
+    "lon": 18.546092302934863,
     "sign": 0,
     "deg": 18,
-    "min": 29,
+    "min": 32,
     "retrograde": false
   },
   "venus": {
-    "lon": 63.27101686019044,
+    "lon": 63.3047375740069,
     "sign": 2,
     "deg": 3,
-    "min": 16,
+    "min": 18,
     "retrograde": false
   },
   "mars": {
-    "lon": 13.196485871366786,
+    "lon": 13.217845708383974,
     "sign": 0,
     "deg": 13,
-    "min": 11,
+    "min": 13,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 108.35550603776409,
+    "lon": 108.35913829982566,
     "sign": 3,
     "deg": 18,
     "min": 21,
     "retrograde": false
   },
   "saturn": {
-    "lon": 8.674387686208245,
+    "lon": 8.677589737964079,
     "sign": 0,
     "deg": 8,
     "min": 40,
     "retrograde": false
   },
   "uranus": {
-    "lon": 60.04499543822962,
+    "lon": 60.046512886931595,
     "sign": 2,
     "deg": 0,
     "min": 2,
     "retrograde": false
   },
   "neptune": {
-    "lon": 3.125608437077372,
+    "lon": 3.126519620019283,
     "sign": 0,
     "deg": 3,
     "min": 7,
     "retrograde": false
   },
   "pluto": {
-    "lon": 305.48739307769205,
+    "lon": 305.48751817706244,
     "sign": 10,
     "deg": 5,
     "min": 29,
     "retrograde": false
   },
   "ascendant": {
-    "lon": 179.75642583245082,
-    "sign": 5,
-    "deg": 29,
-    "min": 45,
+    "lon": 187.7710337207726,
+    "sign": 6,
+    "deg": 7,
+    "min": 46,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 89.72049950632277,
-    "sign": 2,
-    "deg": 29,
-    "min": 43,
+    "lon": 98.93401828951728,
+    "sign": 3,
+    "deg": 8,
+    "min": 56,
     "retrograde": false
   }
 }

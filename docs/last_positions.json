@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 56.575505273427915,
+    "lon": 56.592913192379335,
     "sign": 1,
     "deg": 26,
-    "min": 34,
+    "min": 35,
     "retrograde": false
   },
   "moon": {
-    "lon": 65.66502389912597,
+    "lon": 65.9404494347584,
     "sign": 2,
     "deg": 5,
-    "min": 39,
+    "min": 56,
     "retrograde": false
   },
   "mercury": {
-    "lon": 60.078230677322736,
+    "lon": 60.11765032329868,
     "sign": 2,
     "deg": 0,
-    "min": 4,
-    "retrograde": false
-  },
-  "venus": {
-    "lon": 88.11666822242492,
-    "sign": 2,
-    "deg": 28,
     "min": 7,
     "retrograde": false
   },
+  "venus": {
+    "lon": 88.13827840551983,
+    "sign": 2,
+    "deg": 28,
+    "min": 8,
+    "retrograde": false
+  },
   "mars": {
-    "lon": 28.897255866066626,
+    "lon": 28.910871459130476,
     "sign": 0,
     "deg": 28,
-    "min": 53,
+    "min": 54,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 111.46277029798608,
+    "lon": 111.4658207881654,
     "sign": 3,
     "deg": 21,
     "min": 27,
     "retrograde": false
   },
   "saturn": {
-    "lon": 10.90284622905242,
+    "lon": 10.904647561140946,
     "sign": 0,
     "deg": 10,
     "min": 54,
     "retrograde": false
   },
   "uranus": {
-    "lon": 61.2167639353484,
+    "lon": 61.217817288099724,
     "sign": 2,
     "deg": 1,
     "min": 13,
     "retrograde": false
   },
   "neptune": {
-    "lon": 3.7332666476650695,
+    "lon": 3.733731118795343,
     "sign": 0,
     "deg": 3,
-    "min": 43,
+    "min": 44,
     "retrograde": false
   },
   "pluto": {
-    "lon": 305.48213222150633,
+    "lon": 305.4820428823506,
     "sign": 10,
     "deg": 5,
     "min": 28,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 81.26907954102549,
+    "lon": 87.5194674802441,
     "sign": 2,
-    "deg": 21,
-    "min": 16,
+    "deg": 27,
+    "min": 31,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 327.30843988542097,
-    "sign": 10,
-    "deg": 27,
-    "min": 18,
+    "lon": 334.142779994011,
+    "sign": 11,
+    "deg": 4,
+    "min": 8,
     "retrograde": false
   }
 }

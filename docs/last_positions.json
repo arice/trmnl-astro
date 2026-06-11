@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 80.8182085049908,
+    "lon": 80.86004411904568,
     "sign": 2,
     "deg": 20,
-    "min": 49,
+    "min": 51,
     "retrograde": false
   },
   "moon": {
-    "lon": 33.186974085931006,
+    "lon": 33.82127196778825,
     "sign": 1,
     "deg": 3,
-    "min": 11,
-    "retrograde": false
-  },
-  "mercury": {
-    "lon": 104.82066980379511,
-    "sign": 3,
-    "deg": 14,
     "min": 49,
     "retrograde": false
   },
+  "mercury": {
+    "lon": 104.87260730089436,
+    "sign": 3,
+    "deg": 14,
+    "min": 52,
+    "retrograde": false
+  },
   "venus": {
-    "lon": 118.00710271976062,
+    "lon": 118.05817261494951,
     "sign": 3,
     "deg": 28,
-    "min": 0,
+    "min": 3,
     "retrograde": false
   },
   "mars": {
-    "lon": 47.66696765739584,
+    "lon": 47.69895753866009,
     "sign": 1,
     "deg": 17,
-    "min": 40,
+    "min": 41,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 116.15806290164939,
+    "lon": 116.16682100508929,
     "sign": 3,
     "deg": 26,
-    "min": 9,
+    "min": 10,
     "retrograde": false
   },
   "saturn": {
-    "lon": 13.081193133466064,
+    "lon": 13.084301068573128,
     "sign": 0,
     "deg": 13,
-    "min": 4,
+    "min": 5,
     "retrograde": false
   },
   "uranus": {
-    "lon": 62.67812239329186,
+    "lon": 62.680582128928066,
     "sign": 2,
     "deg": 2,
     "min": 40,
     "retrograde": false
   },
   "neptune": {
-    "lon": 4.238264890598089,
+    "lon": 4.238870067614493,
     "sign": 0,
     "deg": 4,
     "min": 14,
     "retrograde": false
   },
   "pluto": {
-    "lon": 305.22289536770637,
+    "lon": 305.22223389919105,
     "sign": 10,
     "deg": 5,
     "min": 13,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 181.13236946636704,
+    "lon": 193.7443791727132,
     "sign": 6,
-    "deg": 1,
-    "min": 7,
+    "deg": 13,
+    "min": 44,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 91.29944053476711,
+    "lon": 105.8638492126759,
     "sign": 3,
-    "deg": 1,
-    "min": 17,
+    "deg": 15,
+    "min": 51,
     "retrograde": false
   }
 }

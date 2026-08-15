@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 143.01605142773553,
+    "lon": 143.03607651646442,
     "sign": 4,
     "deg": 23,
-    "min": 0,
+    "min": 2,
     "retrograde": false
   },
   "moon": {
-    "lon": 183.23531562689433,
+    "lon": 183.51292778553875,
     "sign": 6,
     "deg": 3,
-    "min": 14,
+    "min": 30,
     "retrograde": false
   },
   "mercury": {
-    "lon": 130.8459855383256,
+    "lon": 130.88584171315912,
     "sign": 4,
     "deg": 10,
-    "min": 50,
-    "retrograde": false
-  },
-  "venus": {
-    "lon": 188.88897136814774,
-    "sign": 6,
-    "deg": 8,
     "min": 53,
     "retrograde": false
   },
+  "venus": {
+    "lon": 188.90885457190373,
+    "sign": 6,
+    "deg": 8,
+    "min": 54,
+    "retrograde": false
+  },
   "mars": {
-    "lon": 92.95922630271208,
+    "lon": 92.9729101576974,
     "sign": 3,
     "deg": 2,
-    "min": 57,
+    "min": 58,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 130.23063195769285,
+    "lon": 130.23518199057668,
     "sign": 4,
     "deg": 10,
-    "min": 13,
+    "min": 14,
     "retrograde": false
   },
   "saturn": {
-    "lon": 14.412073752965323,
+    "lon": 14.411377700455912,
     "sign": 0,
     "deg": 14,
     "min": 24,
     "retrograde": true
   },
   "uranus": {
-    "lon": 65.41321893391093,
+    "lon": 65.4136672022311,
     "sign": 2,
     "deg": 5,
     "min": 24,
     "retrograde": false
   },
   "neptune": {
-    "lon": 4.021082365619299,
+    "lon": 4.020682159134027,
     "sign": 0,
     "deg": 4,
     "min": 1,
     "retrograde": true
   },
   "pluto": {
-    "lon": 303.83774501508503,
+    "lon": 303.83728934297307,
     "sign": 10,
     "deg": 3,
     "min": 50,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 260.9188802115248,
+    "lon": 267.55133497220095,
     "sign": 8,
-    "deg": 20,
-    "min": 55,
+    "deg": 27,
+    "min": 33,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 192.04979237022476,
+    "lon": 200.14502370437216,
     "sign": 6,
-    "deg": 12,
-    "min": 2,
+    "deg": 20,
+    "min": 8,
     "retrograde": false
   }
 }

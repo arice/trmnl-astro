@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 153.11710597766069,
+    "lon": 153.15461829455083,
     "sign": 5,
     "deg": 3,
-    "min": 7,
+    "min": 9,
     "retrograde": false
   },
   "moon": {
-    "lon": 311.6834473475616,
+    "lon": 312.16371704938734,
     "sign": 10,
-    "deg": 11,
-    "min": 41,
+    "deg": 12,
+    "min": 9,
     "retrograde": false
   },
   "mercury": {
-    "lon": 151.72620098631126,
+    "lon": 151.80326126636365,
     "sign": 5,
     "deg": 1,
-    "min": 43,
+    "min": 48,
     "retrograde": false
   },
   "venus": {
-    "lon": 198.45538907580223,
+    "lon": 198.48896046642153,
     "sign": 6,
     "deg": 18,
-    "min": 27,
-    "retrograde": false
-  },
-  "mars": {
-    "lon": 99.77436221770942,
-    "sign": 3,
-    "deg": 9,
-    "min": 46,
-    "retrograde": false
-  },
-  "jupiter": {
-    "lon": 132.49855138026663,
-    "sign": 4,
-    "deg": 12,
     "min": 29,
     "retrograde": false
   },
+  "mars": {
+    "lon": 99.79933984871542,
+    "sign": 3,
+    "deg": 9,
+    "min": 47,
+    "retrograde": false
+  },
+  "jupiter": {
+    "lon": 132.50685588385358,
+    "sign": 4,
+    "deg": 12,
+    "min": 30,
+    "retrograde": false
+  },
   "saturn": {
-    "lon": 13.979072766272848,
+    "lon": 13.977172376239857,
     "sign": 0,
     "deg": 13,
     "min": 58,
     "retrograde": true
   },
   "uranus": {
-    "lon": 65.59521900077327,
+    "lon": 65.59572651771765,
     "sign": 2,
     "deg": 5,
     "min": 35,
     "retrograde": false
   },
   "neptune": {
-    "lon": 3.8001140003197267,
+    "lon": 3.7992264926483985,
     "sign": 0,
     "deg": 3,
-    "min": 48,
+    "min": 47,
     "retrograde": true
   },
   "pluto": {
-    "lon": 303.6193039566062,
+    "lon": 303.6185389774625,
     "sign": 10,
     "deg": 3,
     "min": 37,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 123.09795690809534,
+    "lon": 134.1807085951483,
     "sign": 4,
-    "deg": 3,
-    "min": 5,
+    "deg": 14,
+    "min": 10,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 19.684838219576797,
-    "sign": 0,
-    "deg": 19,
-    "min": 41,
+    "lon": 34.4746901025342,
+    "sign": 1,
+    "deg": 4,
+    "min": 28,
     "retrograde": false
   }
 }

@@ -152,14 +152,18 @@ def svg_to_png(svg_content, output_path):
 
 
 if __name__ == "__main__":
+    # The stellium run writes its own files rather than overwriting the live-sky
+    # ones, so both cases can sit side by side and neither goes quietly stale.
+    suffix = "_stellium" if "--fallback" in sys.argv else ""
+    prod_path = f"./test_chart_prod{suffix}.png"
+    dev_path = f"./test_chart_dev{suffix}.png"
+
     print("Rendering test charts...\n")
 
     print("Production renderer:")
-    svg_prod = render_production(POSITIONS, CONFIG)
-    svg_to_png(svg_prod, "./test_chart_prod.png")
+    svg_to_png(render_production(POSITIONS, CONFIG), prod_path)
 
     print("\nDev renderer:")
-    svg_dev = render_dev(POSITIONS, CONFIG)
-    svg_to_png(svg_dev, "./test_chart_dev.png")
+    svg_to_png(render_dev(POSITIONS, CONFIG), dev_path)
 
-    print("\nDone! Open test_chart_prod.png and test_chart_dev.png to compare.")
+    print(f"\nDone! Open {prod_path} and {dev_path} to compare.")

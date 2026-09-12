@@ -37,6 +37,32 @@ SIGN_GLYPHS = [
     '\u2653',  # ♓ Pisces
 ]
 
+# Astronomicon draws its symbols on ASCII letters rather than Unicode codepoints,
+# so it needs its own tables. Read off the font's own character map, not guessed:
+# A-L are the signs in zodiacal order, Q-Z run Sun through Pluto, M is retrograde,
+# and c/d are the font's purpose-drawn AC and MC marks.
+ASTRO_BODY_GLYPHS = {
+    'sun': 'Q',
+    'moon': 'R',
+    'mercury': 'S',
+    'venus': 'T',
+    'mars': 'U',
+    'jupiter': 'V',
+    'saturn': 'W',
+    'uranus': 'X',
+    'neptune': 'Y',
+    'pluto': 'Z',
+    'mean_north_lunar_node': 'g',
+    'mean_south_lunar_node': 'i',
+    'ascendant': 'ASC',      # drawn in the text face, not the symbol face
+    'medium_coeli': 'MC',
+}
+
+ASTRO_SIGN_GLYPHS = list('ABCDEFGHIJKL')
+
+# Retrograde mark in Astronomicon.
+ASTRO_RETROGRADE_GLYPH = 'M'
+
 # Moon phase symbols (8 phases)
 MOON_PHASES = [
     '\U0001F311',  # 🌑 New Moon (0-45°)

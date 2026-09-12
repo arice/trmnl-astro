@@ -9,6 +9,25 @@ The render() function receives the same inputs as production:
 - config: Dict with 'location', 'bodies', 'display' keys
 
 Output: SVG string (800x480)
+
+Current design: big glyphs held at their true zodiac angle.
+
+The governing idea is that a glyph's *angle* is the information. Two planets a
+degree apart cannot both be drawn at full size on their own ray, so something has
+to give, and there are only two directions to give in:
+
+    sideways  - slide the glyph around the ring. Cheap on space, but it moves the
+                glyph off its true angle, which is the one thing the wheel is for.
+    outward   - push the glyph further out along the *same* ray. Costs radial
+                depth, but the angle stays exactly right.
+
+So placement searches outward first and only slides sideways when it runs out of
+depth. Every glyph sits as near the rim as it can, and a leader line runs from a
+tick at the planet's real position out to it - usually dead straight, because the
+angle usually did not have to move at all.
+
+The legend carries sign, arcminutes, retrograde and house, so the wheel does not
+repeat any of it.
 """
 
 import math
@@ -17,26 +36,75 @@ from zoneinfo import ZoneInfo
 import svgwrite
 
 from .base import (
-    BODY_GLYPHS, SIGN_GLYPHS, MOON_PHASES, RETROGRADE_GLYPH, DARK_GRAY,
+    ASTRO_BODY_GLYPHS as BODY_GLYPHS,
+    ASTRO_SIGN_GLYPHS as SIGN_GLYPHS,
+    ASTRO_RETROGRADE_GLYPH as RETROGRADE_GLYPH,
+    MOON_PHASES, DARK_GRAY,
     get_moon_phase, get_house_number, ordinal
 )
 
+# GLYPH_FONT draws astrological symbols and nothing else; TEXT_FONT draws every
+# letter, digit and degree mark. Keeping them apart matters because dedicated
+# astrology faces (Astronomicon and kin) map their symbols onto ASCII letters --
+# point one of those at a timestamp and the date turns into planets.
+GLYPH_FONT = 'Astronomicon'
+TEXT_FONT = 'DejaVu Sans, Arial, sans-serif'
+
+# Panel the wheel and its labels live in; the legend owns everything to the right.
+PANEL = (4, 4, 430, 476)        # left, top, right, bottom
+
+
+def _box_exit(box, ux, uy):
+    """Distance from a label's anchor to its own box edge along (ux, uy)."""
+    l, r, u, d = box
+    t = 1e9
+    if ux > 1e-9:
+        t = min(t, r / ux)
+    elif ux < -1e-9:
+        t = min(t, l / -ux)
+    if uy > 1e-9:
+        t = min(t, d / uy)
+    elif uy < -1e-9:
+        t = min(t, u / -uy)
+    return t
+
+
+# Sweep flags for the limb and terminator arcs of each phase. Derived by
+# rendering all four flag combinations per phase and keeping the one whose lit
+# area matches (1 - cos elongation) / 2 *and* whose centroid falls on the correct
+# limb - area alone has a mirror-image solution that lights the wrong side.
+_MOON_ARCS = {
+    0: (0, 1),   # new             0.00 lit
+    1: (1, 0),   # waxing crescent 0.15, right
+    2: (1, 0),   # first quarter   0.50, right
+    3: (1, 1),   # waxing gibbous  0.85, right
+    4: (0, 0),   # full            1.00
+    5: (0, 0),   # waning gibbous  0.85, left
+    6: (0, 0),   # last quarter    0.50, left
+    7: (0, 1),   # waning crescent 0.15, left
+}
+
+
+def _moon_path(cx, cy, r, idx):
+    """Outline of the lit part of the Moon for one of the eight phases.
+
+    The phase emoji (U+1F311 and friends) is missing from every font that carries
+    the zodiac, so it renders as a tofu box. Two arcs draw it instead: the limb,
+    and the terminator, whose horizontal radius is the cosine of the elongation.
+    """
+    limb, term = _MOON_ARCS[idx]
+    rx = abs(math.cos(math.radians(idx * 45))) * r
+    return (f"M {cx},{cy - r} A {r},{r} 0 0,{limb} {cx},{cy + r} "
+            f"A {rx},{r} 0 0,{term} {cx},{cy - r} Z")
+
+
+def _overlaps(a, b, pad):
+    return not (a[2] + pad <= b[0] or b[2] + pad <= a[0] or
+                a[3] + pad <= b[1] or b[3] + pad <= a[1])
+
 
 def render(positions, config):
-    """
-    Experimental chart renderer.
-
-    Currently: Copy of production layout.
-    Modify this to try new designs!
-
-    Ideas to try:
-    - Different wheel/legend proportions
-    - Aspect lines between planets
-    - Alternative color schemes (for grayscale)
-    - Different glyph sizes or fonts
-    - House cusp indicators
-    - Element/modality groupings
-    """
+    """Chart with large glyphs pinned to their true zodiac angle."""
     location = config['location']
     bodies = config.get('bodies', list(BODY_GLYPHS.keys()))
     display = config.get('display', {})
@@ -45,371 +113,349 @@ def render(positions, config):
     show_house_numbers = display.get('show_house_numbers', True)
 
     dwg = svgwrite.Drawing(size=('800px', '480px'))
-
-    # White background
     dwg.add(dwg.rect(insert=(0, 0), size=('800px', '480px'), fill='white'))
 
-    # === LEFT SIDE: Zodiac Wheel (moderately compact) ===
-    wheel_cx, wheel_cy = 195, 240  # Slightly left of center
-    outer_r = 130                   # ~16% smaller wheel
-    inner_r = 108
-    sign_glyph_r = 120              # Centered in ring
-    planet_r = 155                  # Labels start outside wheel
-    max_planet_r = 215              # Maximum outward radius for labels
-    tick_inner = outer_r
-    tick_outer = outer_r + 10       # Ticks point outward toward labels
+    # === LEFT SIDE: Zodiac wheel ===
+    wheel_cx, wheel_cy = 216, 240
+    outer_r = 92
+    inner_r = 62          # 30px band, sized for the 24px sign glyphs
+    sign_glyph_r = (outer_r + inner_r) / 2
+    tick_outer = outer_r + 8
 
-    # Calculate rotation so Ascendant is at 9 o'clock
+    # Planet and sign glyphs are kept within ~1.7x of each other so the wheel
+    # reads as one object rather than big symbols orbiting fine print. Dropping
+    # the planets from 58 to 48 also costs far less than it sounds: it takes
+    # glyphs sitting at their exactly-true angle from 72% to 85%, because a
+    # smaller glyph needs to be bumped out to a further radius less often.
+    GLYPH_SIZE = 40
+    DEGREE_SIZE = GLYPH_SIZE // 2   # degrees ride under each glyph at half its size
+    SIGN_GLYPH_SIZE = 24
+    ANGLE_SIZE = 22                 # ASC / MC are reference axes, not planets
+
+    # Every wheel label is a glyph stacked over its degree, so both the planets
+    # and the two axes read the same way. Measured proportions, not guesses:
+    # Astronomicon's widest planet is 0.775 of its size and 0.825 tall, and a
+    # three-character degree in the text face runs about 1.75 of its own size.
+    _GLYPH_W = 0.78 * GLYPH_SIZE
+    _GLYPH_H = 0.83 * GLYPH_SIZE
+    _DEG_W = 1.75 * DEGREE_SIZE
+    _DEG_H = 0.75 * DEGREE_SIZE
+    _NAME_W = 1.90 * ANGLE_SIZE     # "ASC" is the widest axis name
+    _NAME_H = 0.75 * ANGLE_SIZE
+
+    # 'below' stacks the degree under its glyph; 'right' sets it alongside.
+    # Stacked labels are narrow and tall, side-by-side ones wide and short, and
+    # the panel has far more room vertically than horizontally, so the choice
+    # costs real accuracy - see the comparison in the dev log.
+    DEGREE_PLACEMENT = 'right'
+    _GAP = 6
+
+    if DEGREE_PLACEMENT == 'right':
+        # End the glyph and start the figure either side of the anchor, rather
+        # than centring each in a slot cut for the widest possible one. Centring
+        # made the gap depend on how narrow that particular glyph and degree
+        # happened to be: 6px after the Sun and 20 degrees, 18px after Pluto
+        # and 3. Anchoring the facing edges makes it exactly _GAP every time.
+        GLYPH_BASELINE = _GLYPH_H / 2
+        DEGREE_BASELINE = _DEG_H / 2
+        NAME_BASELINE = _NAME_H / 2
+        ANGLE_DEG_BASELINE = _DEG_H / 2
+        GLYPH_ANCHOR, DEGREE_ANCHOR = 'end', 'start'
+        GLYPH_DX = -_GAP / 2
+        DEGREE_DX = _GAP / 2
+        NAME_DX = -_GAP / 2
+        ANGLE_DEG_DX = _GAP / 2
+        GLYPH_BOX = (_GAP / 2 + _GLYPH_W + 2, _GAP / 2 + _DEG_W + 2,
+                     _GLYPH_H / 2 + 2, _GLYPH_H / 2 + 2)
+        ANGLE_BOX = (_GAP / 2 + _NAME_W + 2, _GAP / 2 + _DEG_W + 2,
+                     _NAME_H / 2 + 2, _NAME_H / 2 + 2)
+    else:
+        GLYPH_BASELINE = -0.05 * GLYPH_SIZE
+        DEGREE_BASELINE = GLYPH_BASELINE + 0.45 * GLYPH_SIZE
+        NAME_BASELINE = -0.05 * GLYPH_SIZE
+        ANGLE_DEG_BASELINE = NAME_BASELINE + 0.45 * GLYPH_SIZE
+        GLYPH_ANCHOR = DEGREE_ANCHOR = 'middle'
+        GLYPH_DX = DEGREE_DX = NAME_DX = ANGLE_DEG_DX = 0
+        _GH = max(_GLYPH_W, _DEG_W) / 2 + 2
+        GLYPH_BOX = (_GH, _GH, _GLYPH_H - GLYPH_BASELINE, DEGREE_BASELINE)
+        _AH = max(_NAME_W, _DEG_W) / 2 + 2
+        ANGLE_BOX = (_AH, _AH, _NAME_H - NAME_BASELINE, ANGLE_DEG_BASELINE)
+
+    # Search preferences. Radial displacement keeps the angle honest, so it is
+    # made cheap; angular displacement is what we are trying not to spend.
+    ANGLE_STEP = 1.5         # degrees per sideways step
+    ANGLE_LIMIT = 120        # furthest a glyph may ever be slid sideways
+    RADIAL_STEP = 5          # px per outward step
+    RADIAL_COST = 0.028      # cost of 1px outward, relative to 1 degree sideways
+    LABEL_PAD = 5
+
+    # A leader line only earns its place when the glyph is genuinely hard to
+    # attribute: either sitting off its own ray, or far enough out that the eye
+    # needs help bridging the gap. A glyph resting on the rim at its exact angle
+    # needs no pointer, and drawing one anyway just adds clutter.
+    LEADER_MIN_LATERAL = 6      # px off the true ray
+    LEADER_MIN_GAP = 30         # px of clear space between rim and glyph
+
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
     rotation_offset = 180 - asc_lon
 
     def to_screen_angle(zodiac_lon):
         return math.radians(zodiac_lon + rotation_offset)
 
-    # Outer circle
+    def box_at(cx, cy, box):
+        l, r, u, d = box
+        return (cx - l, cy - u, cx + r, cy + d)
+
+    def radial_extent(theta, box):
+        """How deep a label reaches along its own ray."""
+        l, r, u, d = box
+        return abs(math.cos(theta)) * max(l, r) + abs(math.sin(theta)) * max(u, d)
+
+    def r_bounds(theta, box):
+        """Nearest and furthest this label's centre can sit on this ray.
+
+        The far bound solves the panel rectangle directly rather than inscribing
+        an ellipse in it, so the corners stay usable.
+        """
+        l, r, u, d = box
+        dx, dy = math.cos(theta), -math.sin(theta)      # screen y grows downward
+        far = 1e5
+        if dx > 1e-6:
+            far = min(far, (PANEL[2] - r - wheel_cx) / dx)
+        elif dx < -1e-6:
+            far = min(far, (PANEL[0] + l - wheel_cx) / dx)
+        if dy > 1e-6:
+            far = min(far, (PANEL[3] - d - wheel_cy) / dy)
+        elif dy < -1e-6:
+            far = min(far, (PANEL[1] + u - wheel_cy) / dy)
+        near = tick_outer + 6 + radial_extent(theta, box)
+        return near, max(far, near)
+
+    # --- wheel -------------------------------------------------------------
     dwg.add(dwg.circle(center=(wheel_cx, wheel_cy), r=outer_r,
                        stroke='black', stroke_width=2, fill='none'))
-
-    # Inner circle
     dwg.add(dwg.circle(center=(wheel_cx, wheel_cy), r=inner_r,
                        stroke='black', stroke_width=2, fill='none'))
-
-    # Draw 12 sign divisions and glyphs
     for i in range(12):
-        angle_rad = to_screen_angle(i * 30)
-        x1 = wheel_cx
-        y1 = wheel_cy
-        x2 = wheel_cx + outer_r * math.cos(angle_rad)
-        y2 = wheel_cy - outer_r * math.sin(angle_rad)
+        a = to_screen_angle(i * 30)
+        dwg.add(dwg.line(start=(wheel_cx, wheel_cy),
+                         end=(wheel_cx + outer_r * math.cos(a),
+                              wheel_cy - outer_r * math.sin(a)),
+                         stroke='black', stroke_width=1))
+        mid = to_screen_angle(i * 30 + 15)
+        dwg.add(dwg.text(SIGN_GLYPHS[i],
+                         insert=(wheel_cx + sign_glyph_r * math.cos(mid),
+                                 wheel_cy - sign_glyph_r * math.sin(mid) + 0.34 * SIGN_GLYPH_SIZE),
+                         text_anchor='middle', font_size=f'{SIGN_GLYPH_SIZE}px',
+                         font_family=GLYPH_FONT, fill='black'))
 
-        dwg.add(dwg.line(start=(x1, y1), end=(x2, y2),
-                        stroke='black', stroke_width=1))
+    # --- placement ---------------------------------------------------------
+    # Two hard rules, in this order of importance:
+    #
+    #   1. Order is never violated. Whatever else happens, the glyphs must read
+    #      around the wheel in the same sequence as the planets do around the
+    #      zodiac. Drawing Venus before Neptune when it is actually after is a
+    #      worse lie than drawing it a few degrees off.
+    #   2. Angle is preserved where possible. Collisions are resolved by pushing
+    #      outward along the same ray, which costs only depth; sliding sideways
+    #      is the last resort because it is what spends angle.
+    #
+    # Rule 1 is enforced by cutting the cycle at its widest gap, unwrapping to a
+    # line, and requiring the placed angles to stay non-decreasing along it.
+    entries = [(b, to_screen_angle(positions[b]['lon']))
+               for b in bodies if b in positions]
+    n = len(entries)
+    entries.sort(key=lambda e: e[1] % (2 * math.pi))
+    gaps = [((entries[(i + 1) % n][1] - entries[i][1]) % (2 * math.pi)) for i in range(n)]
+    cut = max(range(n), key=lambda i: gaps[i])
+    entries = entries[cut + 1:] + entries[:cut + 1]
 
-        mid_angle_rad = to_screen_angle(i * 30 + 15)
-        gx = wheel_cx + sign_glyph_r * math.cos(mid_angle_rad)
-        gy = wheel_cy - sign_glyph_r * math.sin(mid_angle_rad)
+    base = entries[0][1]
+    trues = [base + ((th - base) % (2 * math.pi)) for _, th in entries]
 
-        dwg.add(dwg.text(SIGN_GLYPHS[i], insert=(gx, gy + 5),
-                        text_anchor='middle', font_size='16px',
-                        font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black'))
+    def is_axis(body):
+        return body in ('ascendant', 'medium_coeli')
 
-    # Draw tick marks on outer ring (pointing outward toward labels)
-    for body in bodies:
-        if body in positions and body not in ['ascendant', 'medium_coeli']:
-            pos = positions[body]
-            lon = pos['lon']
-            angle = to_screen_angle(lon)
+    # Candidates for each label, cheapest first. Angle is weighted far above
+    # radius, and the axes are weighted higher still so they effectively never
+    # move -- they are the marks everything else is read against.
+    all_candidates = []
+    for i, (body, _) in enumerate(entries):
+        box = ANGLE_BOX if is_axis(body) else GLYPH_BOX
+        weight = 8.0 if is_axis(body) else 1.0
+        near0 = r_bounds(trues[i], box)[0]
+        cands = []
+        for si in range(int(ANGLE_LIMIT / ANGLE_STEP) + 1):
+            for sgn in ((0,) if si == 0 else (1, -1)):
+                d_deg = sgn * si * ANGLE_STEP
+                theta = trues[i] + math.radians(d_deg)
+                lo, hi = r_bounds(theta, box)
+                r = lo
+                while r <= hi + 0.5:
+                    cands.append((weight * abs(d_deg) + RADIAL_COST * (r - near0), theta, r))
+                    r += RADIAL_STEP
+        cands.sort(key=lambda c: c[0])
+        all_candidates.append(cands)
 
-            t1x = wheel_cx + tick_inner * math.cos(angle)
-            t1y = wheel_cy - tick_inner * math.sin(angle)
-            t2x = wheel_cx + tick_outer * math.cos(angle)
-            t2y = wheel_cy - tick_outer * math.sin(angle)
-            dwg.add(dwg.line(start=(t1x, t1y), end=(t2x, t2y),
-                            stroke=DARK_GRAY, stroke_width=2))
+    def best_spot(i, lower, upper, others, pad):
+        """Cheapest collision-free spot for label i with its angle in bounds."""
+        box = ANGLE_BOX if is_axis(entries[i][0]) else GLYPH_BOX
+        for cost, theta, r in all_candidates[i]:
+            if theta < lower - 1e-9 or theta > upper + 1e-9:
+                continue
+            cx = wheel_cx + r * math.cos(theta)
+            cy = wheel_cy - r * math.sin(theta)
+            rect = box_at(cx, cy, box)
+            if not any(_overlaps(rect, o, pad) for o in others):
+                return (cost, theta, r, cx, cy, rect)
+        return None
 
-    # Place combined planet glyph + degree labels with collision avoidance
-    planet_positions = []
-    for body in bodies:
-        if body in positions and body not in ['ascendant', 'medium_coeli']:
-            pos = positions[body]
-            planet_positions.append((body, pos['lon'], pos['deg']))
+    TWO_PI = 2 * math.pi
+    slots = [None] * n
+    for pad in (LABEL_PAD, 0):
+        placed_rects = []
+        ok = True
+        lower = -1e9
+        for i in range(n):
+            upper = trues[0] + TWO_PI - 1e-6 if i == n - 1 else 1e9
+            spot = best_spot(i, lower, upper, placed_rects, pad)
+            if spot is None:
+                ok = False
+                break
+            slots[i] = spot
+            placed_rects.append(spot[5])
+            lower = spot[1]              # keeps the sequence non-decreasing
+        if ok:
+            break
+    else:
+        # Nothing fits even touching: fall back to true angles at max radius.
+        for i, (body, _) in enumerate(entries):
+            box = ANGLE_BOX if is_axis(body) else GLYPH_BOX
+            r = r_bounds(trues[i], box)[1]
+            cx = wheel_cx + r * math.cos(trues[i])
+            cy = wheel_cy - r * math.sin(trues[i])
+            slots[i] = (0, trues[i], r, cx, cy, box_at(cx, cy, box))
 
-    planet_positions.sort(key=lambda x: x[1])
+    # The forward pass can only push a crowded run one way. Sweep back and forth
+    # letting each label return toward its true angle as far as its neighbours
+    # allow; the monotonic bounds keep the order intact throughout.
+    for _ in range(3):
+        for order in (range(n - 1, -1, -1), range(n)):
+            for i in order:
+                lower = slots[i - 1][1] if i > 0 else trues[0] - TWO_PI + 1e-6
+                upper = slots[i + 1][1] if i < n - 1 else trues[0] + TWO_PI - 1e-6
+                others = [s[5] for j, s in enumerate(slots) if j != i]
+                spot = best_spot(i, lower, upper, others, LABEL_PAD)
+                if spot is not None and spot[0] < slots[i][0] - 1e-9:
+                    slots[i] = spot
 
-    # Kerykeion-inspired collision avoidance
-    GROUP_THRESHOLD = 3.5    # degrees - planets within this form a group
-    SPREAD_AMOUNT = 1.75     # degrees - how much to spread grouped planets
+    placed = {entries[i][0]: (slots[i][1], slots[i][2], slots[i][3], slots[i][4])
+              for i in range(n)}
 
-    # Two radii for alternating placement (creates natural vertical separation)
-    inner_planet_r = planet_r
-    outer_planet_r = planet_r + 20
+    # --- ticks, leaders, glyphs -------------------------------------------
+    for body, true_angle in entries:
+        theta, r, lx, ly = placed[body]
+        is_angle = body in ('ascendant', 'medium_coeli')
+        box = ANGLE_BOX if is_angle else GLYPH_BOX
 
-    def angular_distance(lon1, lon2):
-        """Shortest angular distance between two longitudes (signed)"""
-        diff = (lon2 - lon1) % 360
-        if diff > 180:
-            diff -= 360
-        return diff
+        tx1 = wheel_cx + outer_r * math.cos(true_angle)
+        ty1 = wheel_cy - outer_r * math.sin(true_angle)
+        tx2 = wheel_cx + tick_outer * math.cos(true_angle)
+        ty2 = wheel_cy - tick_outer * math.sin(true_angle)
+        dwg.add(dwg.line(start=(tx1, ty1), end=(tx2, ty2),
+                         stroke='black', stroke_width=2))
 
-    def abs_angular_distance(lon1, lon2):
-        """Absolute angular distance between two longitudes"""
-        return abs(angular_distance(lon1, lon2))
+        # Aim the leader at the glyph itself rather than at a radius along its
+        # ray. Those differ whenever a glyph is displaced sideways at a small
+        # radius, and the ray version then degenerates into a stub skimming the
+        # rim, pointing tens of degrees away from what it is supposed to label.
+        vx, vy = lx - tx2, ly - ty2
+        span = math.hypot(vx, vy)
+        lateral = abs(r * math.sin(theta - true_angle))
+        if span > 1e-6:
+            ux, uy = -vx / span, -vy / span
+            inset = _box_exit(box, ux, uy) + 3
+            clear = span - inset
+            if lateral > LEADER_MIN_LATERAL or clear > LEADER_MIN_GAP:
+                if clear > 2:
+                    dwg.add(dwg.line(start=(tx2, ty2),
+                                     end=(lx + ux * inset, ly + uy * inset),
+                                     stroke=DARK_GRAY, stroke_width=1))
 
-    def is_near_asc(screen_angle):
-        """Check if angle is in the ASC zone (left side, within ~15° of horizontal)"""
-        angle_from_pi = abs(screen_angle - math.pi)
-        if angle_from_pi > math.pi:
-            angle_from_pi = 2 * math.pi - angle_from_pi
-        return angle_from_pi < 0.26  # ~15 degrees
-
-    # Get MC longitude for collision avoidance
-    mc_lon = positions.get('medium_coeli', {}).get('lon', None)
-
-    def is_near_mc(screen_angle):
-        """Check if angle is near MC (within ~15° of MC's screen angle)"""
-        if mc_lon is None:
-            return False
-        mc_screen = to_screen_angle(mc_lon)
-        angle_diff = abs(screen_angle - mc_screen)
-        if angle_diff > math.pi:
-            angle_diff = 2 * math.pi - angle_diff
-        return angle_diff < 0.26
-
-    # === GROUPING ALGORITHM ===
-    # Find groups of planets within GROUP_THRESHOLD of each other
-
-    def find_groups(positions_list):
-        """Identify groups of close planets and calculate adjusted positions"""
-        if not positions_list:
-            return {}
-
-        adjustments = {}  # body -> adjusted_lon
-
-        # Initialize with natural positions
-        for body, lon, deg in positions_list:
-            adjustments[body] = lon
-
-        n = len(positions_list)
-        if n < 2:
-            return adjustments
-
-        # Find groups by scanning sorted positions
-        i = 0
-        while i < n:
-            group_start = i
-            group = [positions_list[i]]
-
-            # Extend group while next planet is within threshold
-            while i + 1 < n:
-                current_lon = positions_list[i][1]
-                next_lon = positions_list[i + 1][1]
-                if abs_angular_distance(current_lon, next_lon) < GROUP_THRESHOLD:
-                    group.append(positions_list[i + 1])
-                    i += 1
-                else:
-                    break
-
-            # Apply symmetric spreading to group
-            if len(group) == 2:
-                # Two planets: spread symmetrically from midpoint
-                body1, lon1, _ = group[0]
-                body2, lon2, _ = group[1]
-                midpoint = (lon1 + lon2) / 2
-                adjustments[body1] = midpoint - SPREAD_AMOUNT
-                adjustments[body2] = midpoint + SPREAD_AMOUNT
-
-            elif len(group) >= 3:
-                # 3+ planets: distribute evenly across the span + padding
-                lons = [g[1] for g in group]
-                span_start = min(lons) - SPREAD_AMOUNT
-                span_end = max(lons) + SPREAD_AMOUNT
-                total_span = span_end - span_start
-                step = total_span / (len(group) - 1) if len(group) > 1 else 0
-
-                for j, (body, lon, deg) in enumerate(group):
-                    adjustments[body] = span_start + (j * step)
-
-            i += 1
-
-        return adjustments
-
-    # Calculate adjusted positions for all planets
-    adjusted_lons = find_groups(planet_positions)
-
-    # === PLACEMENT LOOP ===
-    # Track which radius tier each planet uses (alternating)
-    planet_index = 0
-
-    for body, lon, deg in planet_positions:
-        adjusted_lon = adjusted_lons.get(body, lon)
-        screen_angle = to_screen_angle(lon)
-        display_angle = to_screen_angle(adjusted_lon)
-
-        # Alternate between inner and outer radius for natural separation
-        if planet_index % 2 == 0:
-            current_r = inner_planet_r
+        deg_text = f"{positions[body]['deg']}\u00B0"
+        if is_angle:
+            name = 'ASC' if body == 'ascendant' else 'MC'
+            dwg.add(dwg.text(name, insert=(lx + NAME_DX, ly + NAME_BASELINE),
+                             text_anchor=GLYPH_ANCHOR,
+                             font_size=f'{ANGLE_SIZE}px', font_family=TEXT_FONT,
+                             fill='black', font_weight='bold'))
+            dwg.add(dwg.text(deg_text, insert=(lx + ANGLE_DEG_DX, ly + ANGLE_DEG_BASELINE),
+                             text_anchor=DEGREE_ANCHOR, font_size=f'{DEGREE_SIZE}px',
+                             font_family=TEXT_FONT, fill='black'))
         else:
-            current_r = outer_planet_r
+            dwg.add(dwg.text(BODY_GLYPHS[body], insert=(lx + GLYPH_DX, ly + GLYPH_BASELINE),
+                             text_anchor=GLYPH_ANCHOR, font_size=f'{GLYPH_SIZE}px',
+                             font_family=GLYPH_FONT, fill='black'))
+            dwg.add(dwg.text(deg_text, insert=(lx + DEGREE_DX, ly + DEGREE_BASELINE),
+                             text_anchor=DEGREE_ANCHOR, font_size=f'{DEGREE_SIZE}px',
+                             font_family=TEXT_FONT, fill='black'))
 
-        y_offset = 0
-
-        # Special handling for ASC zone - use vertical displacement instead
-        if is_near_asc(display_angle):
-            current_r = planet_r  # Reset to base radius
-            # Shift based on zodiacal position relative to ASC
-            if lon < asc_lon:
-                y_offset = -22  # Above ASC
-            else:
-                y_offset = 22   # Below ASC
-
-        # Special handling for MC zone - use vertical displacement
-        elif is_near_mc(display_angle):
-            current_r = planet_r - 15  # Slightly inward
-            if mc_lon and lon < mc_lon:
-                y_offset = -22  # Above MC
-            else:
-                y_offset = 22   # Below MC
-
-        # Calculate final position
-        px = wheel_cx + current_r * math.cos(display_angle)
-        py = wheel_cy - current_r * math.sin(display_angle) + y_offset
-
-        # Safety check: avoid collision with ASC label (always at left edge: x≈27, y=240)
-        asc_label_x = wheel_cx - outer_r - 38
-        asc_label_y = wheel_cy
-        if abs(px - asc_label_x) < 40 and abs(py - asc_label_y) < 20:
-            nudge = 22
-            py += nudge if screen_angle > math.pi else -nudge
-
-        planet_index += 1
-
-        # Adaptive layout: stack at top/bottom (where horizontal space is tight),
-        # side-by-side on left/right (where there's more horizontal room)
-        # sin(angle) > 0.7 means roughly within 45° of vertical (top or bottom)
-        # Use display_angle for consistency with actual placement
-        is_vertical_zone = abs(math.sin(display_angle)) > 0.7
-
-        glyph = BODY_GLYPHS[body]
-        deg_text = f"{deg}°"
-        font = 'Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif'
-
-        if is_vertical_zone:
-            # Stack: glyph on top, degree below
-            dwg.add(dwg.text(glyph, insert=(px, py),
-                            text_anchor='middle', font_size='20px',
-                            font_family=font, fill='black'))
-            dwg.add(dwg.text(deg_text, insert=(px, py + 14),
-                            text_anchor='middle', font_size='16px',
-                            font_family=font, fill='black'))
-        else:
-            # Side-by-side: glyph then degree (separate elements for consistent sizing)
-            dwg.add(dwg.text(glyph, insert=(px - 9, py + 6),
-                            text_anchor='middle', font_size='20px',
-                            font_family=font, fill='black'))
-            dwg.add(dwg.text(deg_text, insert=(px + 13, py + 6),
-                            text_anchor='middle', font_size='16px',
-                            font_family=font, fill='black'))
-
-    # Draw ASC tick and label at left edge (9 o'clock position)
-    # ASC is always horizontal (left side of wheel) - use side-by-side layout
-    if 'ascendant' in positions:
-        asc_rad = math.radians(180)
-        # Tick mark extending outward
-        dwg.add(dwg.line(start=(wheel_cx - outer_r, wheel_cy),
-                        end=(wheel_cx - outer_r - 12, wheel_cy),
-                        stroke='black', stroke_width=2))
-        asc_deg = positions['ascendant']['deg']
-        # Label to the left of tick - side-by-side layout
-        label_x = wheel_cx - outer_r - 38
-        label_y = wheel_cy + 5
-        dwg.add(dwg.text('ASC', insert=(label_x - 12, label_y),
-                        text_anchor='middle', font_size='14px',
-                        font_family='DejaVu Sans, Arial, sans-serif', fill='black',
-                        font_weight='bold'))
-        dwg.add(dwg.text(f"{asc_deg}°", insert=(label_x + 14, label_y),
-                        text_anchor='middle', font_size='14px',
-                        font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
-
-    # Draw MC tick and label outside wheel
-    # MC uses same vertical/horizontal zone logic as planets
-    if 'medium_coeli' in positions:
-        mc_rad = to_screen_angle(positions['medium_coeli']['lon'])
-        mc_deg = positions['medium_coeli']['deg']
-        # Tick mark extending outward
-        tick_start_x = wheel_cx + outer_r * math.cos(mc_rad)
-        tick_start_y = wheel_cy - outer_r * math.sin(mc_rad)
-        tick_end_x = wheel_cx + (outer_r + 12) * math.cos(mc_rad)
-        tick_end_y = wheel_cy - (outer_r + 12) * math.sin(mc_rad)
-        dwg.add(dwg.line(start=(tick_start_x, tick_start_y), end=(tick_end_x, tick_end_y),
-                        stroke='black', stroke_width=2))
-        # Label beyond tick - use same zone logic as planets
-        mc_label_r = outer_r + 30
-        label_x = wheel_cx + mc_label_r * math.cos(mc_rad)
-        label_y = wheel_cy - mc_label_r * math.sin(mc_rad)
-        mc_is_vertical = abs(math.sin(mc_rad)) > 0.7
-
-        if mc_is_vertical:
-            # Stack: MC on top, degree below
-            dwg.add(dwg.text('MC', insert=(label_x, label_y),
-                            text_anchor='middle', font_size='14px',
-                            font_family='DejaVu Sans, Arial, sans-serif', fill='black',
-                            font_weight='bold'))
-            dwg.add(dwg.text(f"{mc_deg}°", insert=(label_x, label_y + 14),
-                            text_anchor='middle', font_size='14px',
-                            font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
-        else:
-            # Side-by-side: MC then degree
-            dwg.add(dwg.text('MC', insert=(label_x - 10, label_y + 5),
-                            text_anchor='middle', font_size='14px',
-                            font_family='DejaVu Sans, Arial, sans-serif', fill='black',
-                            font_weight='bold'))
-            dwg.add(dwg.text(f"{mc_deg}°", insert=(label_x + 14, label_y + 5),
-                            text_anchor='middle', font_size='14px',
-                            font_family='DejaVu Sans, Arial, sans-serif', fill='black'))
-
-    # === RIGHT SIDE: Legend Panel (larger fonts) ===
+    # === RIGHT SIDE: Legend panel (unchanged) ===
     legend_x = 435
-    legend_y_start = 15
+    legend_y_start = 32       # baseline; 15 put the cap-height above the canvas
     line_height = 30
-
+    # Astronomicon sets smaller than a text face at the same nominal size, so the
+    # legend glyphs step up and the figures step down to bring them into balance.
+    LEGEND_GLYPH_SIZE = 30
+    LEGEND_TEXT_SIZE = 20
     asc_sign = positions.get('ascendant', {}).get('sign', 0)
 
-    header_text = 'Planetary Positions'
-    if show_moon_phase:
-        moon_phase_idx = get_moon_phase(positions)
-        if moon_phase_idx is not None:
-            header_text = f'{MOON_PHASES[moon_phase_idx]} {header_text}'
-
-    dwg.add(dwg.text(header_text, insert=(legend_x + 170, legend_y_start),
-                    text_anchor='middle', font_size='22px',
-                    font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill='black',
-                    font_weight='bold'))
-
+    moon_idx = get_moon_phase(positions) if show_moon_phase else None
+    title_dx = 16 if moon_idx is not None else 0
+    dwg.add(dwg.text('Planetary Positions',
+                     insert=(legend_x + 170 + title_dx, legend_y_start),
+                     text_anchor='middle', font_size='22px',
+                     font_family=TEXT_FONT, fill='black', font_weight='bold'))
+    if moon_idx is not None:
+        mcx, mcy, mr = legend_x + 60, legend_y_start - 7, 9
+        dwg.add(dwg.circle(center=(mcx, mcy), r=mr, fill='white',
+                           stroke='black', stroke_width=1.5))
+        if moon_idx != 0:
+            dwg.add(dwg.path(d=_moon_path(mcx, mcy, mr, moon_idx),
+                             fill='black', stroke='none'))
     dwg.add(dwg.line(start=(legend_x, legend_y_start + 12),
-                    end=(legend_x + 340, legend_y_start + 12),
-                    stroke='black', stroke_width=1))
+                     end=(legend_x + 340, legend_y_start + 12),
+                     stroke='black', stroke_width=1))
 
-    y = legend_y_start + 38
+    y = legend_y_start + 40
     for body in bodies:
         if body in positions:
             pos = positions[body]
-            glyph = BODY_GLYPHS[body]
-            sign_glyph = SIGN_GLYPHS[pos['sign']]
-            deg_str = f"{pos['deg']:02d}\u00B0{pos['min']:02d}'"
-
-            dwg.add(dwg.text(glyph, insert=(legend_x + 10, y),
-                            font_size='26px', font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif',
-                            fill='black', font_weight='bold'))
-
-            dwg.add(dwg.text(sign_glyph, insert=(legend_x + 70, y),
-                            font_size='26px', font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif',
-                            fill='black'))
-
-            dwg.add(dwg.text(deg_str, insert=(legend_x + 120, y),
-                            font_size='24px', font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif',
-                            fill='black'))
-
+            is_axis_row = body in ('ascendant', 'medium_coeli')
+            dwg.add(dwg.text(BODY_GLYPHS[body], insert=(legend_x + 10, y),
+                             font_size=f'{24 if is_axis_row else LEGEND_GLYPH_SIZE}px',
+                             font_family=TEXT_FONT if is_axis_row else GLYPH_FONT,
+                             fill='black', font_weight='bold'))
+            dwg.add(dwg.text(SIGN_GLYPHS[pos['sign']], insert=(legend_x + 72, y),
+                             font_size=f'{LEGEND_GLYPH_SIZE}px',
+                             font_family=GLYPH_FONT, fill='black'))
+            dwg.add(dwg.text(f"{pos['deg']:02d}°{pos['min']:02d}'", insert=(legend_x + 118, y),
+                             font_size=f'{LEGEND_TEXT_SIZE}px', font_family=TEXT_FONT,
+                             fill='black'))
             if show_retrograde and pos.get('retrograde', False):
-                dwg.add(dwg.text(RETROGRADE_GLYPH, insert=(legend_x + 210, y),
-                                font_size='18px', font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif',
-                                fill='black'))
-
+                dwg.add(dwg.text(RETROGRADE_GLYPH, insert=(legend_x + 196, y),
+                                 font_size='20px', font_family=GLYPH_FONT, fill='black'))
             if show_house_numbers and body not in ['ascendant', 'medium_coeli']:
-                house_num = get_house_number(pos['sign'], asc_sign)
-                dwg.add(dwg.text(ordinal(house_num), insert=(legend_x + 245, y),
-                                font_size='20px', font_family='DejaVu Sans, Arial, sans-serif',
-                                fill='black'))
-
+                dwg.add(dwg.text(ordinal(get_house_number(pos['sign'], asc_sign)),
+                                 insert=(legend_x + 238, y),
+                                 font_size=f'{LEGEND_TEXT_SIZE}px',
+                                 font_family=TEXT_FONT, fill='black'))
             y += line_height
 
-    # Timestamp with DEV indicator
-    local_tz = ZoneInfo(location['timezone'])
-    now_local = datetime.now(local_tz)
-    date_str = now_local.strftime('%B %d %Y')
-    time_str = now_local.strftime('%-I:%M %p').lower()
-    timestamp = f"{date_str} {time_str}"
-    dwg.add(dwg.text(f"[DEV] {location['name']} | {timestamp}", insert=(legend_x + 170, 468),
-                    text_anchor='middle', font_size='14px',
-                    font_family='Apple Symbols, Noto Sans Symbols 2, DejaVu Sans, sans-serif', fill=DARK_GRAY))
+    now_local = datetime.now(ZoneInfo(location['timezone']))
+    stamp = f"{now_local.strftime('%B %d %Y')} {now_local.strftime('%-I:%M %p').lower()}"
+    dwg.add(dwg.text(f"[DEV] {location['name']} | {stamp}", insert=(legend_x + 170, 468),
+                     text_anchor='middle', font_size='14px',
+                     font_family=TEXT_FONT, fill=DARK_GRAY))
 
     return dwg.tostring()

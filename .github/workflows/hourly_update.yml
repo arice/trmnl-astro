@@ -23,11 +23,15 @@ jobs:
       
       - name: Install dependencies
         run: |
-          # Download Noto Sans Symbols 2 from GitHub releases
+          # Install the symbol font from the repo rather than the network. The
+          # previous version fetched a font over HTTP and that URL had been
+          # 404ing for the life of the project: curl wrote the 9-byte "Not Found"
+          # body to a .ttf, fc-cache ignored it, and every chart silently
+          # rendered in a fallback face. Fail loudly instead of quietly.
           mkdir -p ~/.local/share/fonts
-          curl -L -o ~/.local/share/fonts/NotoSansSymbols2-Regular.ttf \
-            "https://github.com/notofonts/symbols/releases/download/NotoSansSymbols2-v2.008/NotoSansSymbols2-Regular.ttf"
-          fc-cache -fv
+          cp fonts/Astronomicon.ttf ~/.local/share/fonts/
+          fc-cache -f
+          fc-list | grep -q Astronomicon || { echo "Astronomicon did not register"; exit 1; }
           pip install requests cairosvg pillow svgwrite pyyaml
       
       - name: Generate and update chart

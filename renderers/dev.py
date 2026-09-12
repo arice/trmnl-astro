@@ -410,14 +410,18 @@ def render(positions, config):
     LEGEND_TEXT_SIZE = 20
     asc_sign = positions.get('ascendant', {}).get('sign', 0)
 
+    # Anchor the header from the left rather than centring it. The title is bold,
+    # and the bold face is ~15% wider than the regular one, so a centred title
+    # grows out to both sides -- enough to run into the moon on a machine that
+    # has the bold face when the machine it was tuned on did not. Anchored left,
+    # the gap is fixed whatever the font does.
     moon_idx = get_moon_phase(positions) if show_moon_phase else None
-    title_dx = 16 if moon_idx is not None else 0
-    dwg.add(dwg.text('Planetary Positions',
-                     insert=(legend_x + 170 + title_dx, legend_y_start),
-                     text_anchor='middle', font_size='22px',
+    title_x = legend_x + (34 if moon_idx is not None else 2)
+    dwg.add(dwg.text('Planetary Positions', insert=(title_x, legend_y_start),
+                     text_anchor='start', font_size='22px',
                      font_family=TEXT_FONT, fill='black', font_weight='bold'))
     if moon_idx is not None:
-        mcx, mcy, mr = legend_x + 60, legend_y_start - 7, 9
+        mcx, mcy, mr = legend_x + 13, legend_y_start - 7, 9
         dwg.add(dwg.circle(center=(mcx, mcy), r=mr, fill='white',
                            stroke='black', stroke_width=1.5))
         if moon_idx != 0:

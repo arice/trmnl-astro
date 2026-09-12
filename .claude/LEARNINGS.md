@@ -166,6 +166,14 @@ Gotchas only. Non-obvious constraints and mistakes worth not repeating.
   the footer were drawn in the symbol font, which was harmless with Unicode faces and would
   have been nonsense here.
 
+- **Installing a font's regular face is not installing the font.** `font-weight="bold"` on a
+  machine with only `DejaVuSans.ttf` silently renders regular; CI has the whole family and
+  renders real bold, which is ~15% wider. That difference alone pushed the centred legend
+  header into the moon glyph on the live chart while the local copy looked fine. Install every
+  weight the renderer asks for, and prefer layouts that cannot break on a width change - the
+  header is now anchored from the left rather than centred, so the gap is fixed whatever the
+  face does.
+
 - **Read a symbol font's character map, do not guess it.** Render the printable ASCII range in
   a labelled grid and look at it. The vendor page's own description had the planets in a
   different order than the font does.

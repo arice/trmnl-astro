@@ -9,7 +9,7 @@ This is a TRMNL e-ink display integration that shows astrological charts. It fet
 ## Architecture
 
 ```
-GitHub Actions (every 5 min)
+GitHub Actions (dispatched from the droplet every 6 min)
     ↓
 trmnl_astrology.py
     ├── Calls Astrologer API /api/v5/chart-data/birth-chart → Gets JSON position data

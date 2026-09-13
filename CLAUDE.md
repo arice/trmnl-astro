@@ -33,7 +33,7 @@ TRMNL fetches and displays production chart
   - `base.py` - Shared glyphs, colors, and utilities
   - `production.py` - Stable production renderer (used by TRMNL)
   - `dev.py` - Development sandbox for iterating on new designs
-- `.github/workflows/hourly_update.yml` - GitHub Actions workflow (runs every 5 minutes)
+- `.github/workflows/hourly_update.yml` - GitHub Actions workflow (triggered from the droplet every 6 min; see Schedule)
 - `docs/chart.png` - Production image served via GitHub Pages
 - `docs/dev-chart.png` - Development image for iteration (also on GitHub Pages)
 - `test_chart.py` - Local testing with mock data (run in venv)
@@ -117,7 +117,12 @@ rebase pull keeps history clean and avoids merge commits.
 
 **Location:** Set in `trmnl_astrology.py` in `CHART_PAYLOAD` (currently Philadelphia). Update `city`, `nation`, `longitude`, `latitude`, and `timezone` to change location.
 
-**Schedule:** Set in `.github/workflows/hourly_update.yml` cron expression (currently every 15 minutes).
+**Schedule:** Driven by a cron on the droplet (`~/bin/trmnl-dispatch.sh`, every 6 minutes)
+that calls the GitHub `workflow_dispatch` API. GitHub's own `schedule:` trigger is still in
+the workflow as a fallback but is best-effort — measured over 60 runs it fired about once
+every three hours against a requested five minutes, which is why the droplet drives it.
+Six minutes is deliberate: TRMNL allows 12 webhook pushes an hour, and every five minutes
+sat exactly on that cap and returned 429s.
 
 **TRMNL Plugin:** Uses webhook strategy. Markup should be:
 ```html

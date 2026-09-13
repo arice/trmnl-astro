@@ -124,7 +124,8 @@ on:
 
 ## How It Works
 
-1. **GitHub Actions** triggers every 15 minutes
+1. **A cron on the droplet** calls the GitHub workflow_dispatch API every 6 minutes
+   (GitHub's own `schedule:` trigger is a best-effort fallback — it averaged ~3 hours)
 2. **Python script** fetches position data from Astrologer API
 3. **Custom renderer** creates SVG wheel + legend (800x480)
 4. **CairoSVG** converts to B&W PNG for e-ink

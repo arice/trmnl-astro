@@ -187,6 +187,15 @@ def send_to_trmnl():
         timeout=30
     )
 
+    if response.status_code == 429:
+        # TRMNL allows 12 webhook payloads an hour on the standard plan. Being
+        # throttled is not a reason to throw away a chart that rendered fine:
+        # raising here aborts the job before the commit step, so a momentary
+        # rate limit costs the whole update. The device keeps fetching the URL
+        # it already has, and that URL serves the current chart.png regardless.
+        print("TRMNL rate limit (429) - skipping this push, chart still committed")
+        return None
+
     if response.status_code not in [200, 201]:
         raise Exception(f"TRMNL webhook error: {response.status_code} - {response.text}")
 

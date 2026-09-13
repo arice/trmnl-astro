@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 171.0331909912045,
+    "lon": 171.03724888332079,
     "sign": 5,
     "deg": 21,
-    "min": 1,
-    "retrograde": false
-  },
-  "moon": {
-    "lon": 204.04766269848966,
-    "sign": 6,
-    "deg": 24,
     "min": 2,
     "retrograde": false
   },
+  "moon": {
+    "lon": 204.1014384486929,
+    "sign": 6,
+    "deg": 24,
+    "min": 6,
+    "retrograde": false
+  },
   "mercury": {
-    "lon": 185.21253570637433,
+    "lon": 185.2193415943497,
     "sign": 6,
     "deg": 5,
-    "min": 12,
+    "min": 13,
     "retrograde": false
   },
   "venus": {
-    "lon": 212.1672338319483,
+    "lon": 212.16968512510877,
     "sign": 7,
     "deg": 2,
     "min": 10,
     "retrograde": false
   },
   "mars": {
-    "lon": 111.39825938758503,
+    "lon": 111.40081828415387,
     "sign": 3,
     "deg": 21,
-    "min": 23,
+    "min": 24,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 136.3289173039647,
+    "lon": 136.32974850405554,
     "sign": 4,
     "deg": 16,
     "min": 19,
     "retrograde": false
   },
   "saturn": {
-    "lon": 12.867587018879613,
+    "lon": 12.86729623844165,
     "sign": 0,
     "deg": 12,
     "min": 52,
     "retrograde": true
   },
   "uranus": {
-    "lon": 65.69303100556759,
+    "lon": 65.6930201855727,
     "sign": 2,
     "deg": 5,
     "min": 41,
     "retrograde": true
   },
   "neptune": {
-    "lon": 3.3351472824578456,
+    "lon": 3.335034924111049,
     "sign": 0,
     "deg": 3,
     "min": 20,
     "retrograde": true
   },
   "pluto": {
-    "lon": 303.30442901804236,
+    "lon": 303.304370626406,
     "sign": 10,
     "deg": 3,
     "min": 18,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 279.8710506213287,
+    "lon": 281.3771005908669,
     "sign": 9,
-    "deg": 9,
-    "min": 52,
+    "deg": 11,
+    "min": 22,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 213.88751459062107,
+    "lon": 215.44296916820116,
     "sign": 7,
-    "deg": 3,
-    "min": 53,
+    "deg": 5,
+    "min": 26,
     "retrograde": false
   }
 }

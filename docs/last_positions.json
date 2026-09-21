@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 178.546027979405,
+    "lon": 178.55010076783688,
     "sign": 5,
     "deg": 28,
-    "min": 32,
-    "retrograde": false
-  },
-  "moon": {
-    "lon": 297.56493058599733,
-    "sign": 9,
-    "deg": 27,
     "min": 33,
     "retrograde": false
   },
+  "moon": {
+    "lon": 297.6151656078398,
+    "sign": 9,
+    "deg": 27,
+    "min": 36,
+    "retrograde": false
+  },
   "mercury": {
-    "lon": 197.2663300514329,
+    "lon": 197.27257436248308,
     "sign": 6,
     "deg": 17,
-    "min": 15,
+    "min": 16,
     "retrograde": false
   },
   "venus": {
-    "lon": 216.00926214914008,
+    "lon": 216.0109290167072,
     "sign": 7,
     "deg": 6,
     "min": 0,
     "retrograde": false
   },
   "mars": {
-    "lon": 116.07566143302515,
+    "lon": 116.07816399372147,
     "sign": 3,
     "deg": 26,
     "min": 4,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 137.834108130006,
+    "lon": 137.8349048101311,
     "sign": 4,
     "deg": 17,
     "min": 50,
     "retrograde": false
   },
   "saturn": {
-    "lon": 12.30868862983731,
+    "lon": 12.308375999032931,
     "sign": 0,
     "deg": 12,
     "min": 18,
     "retrograde": true
   },
   "uranus": {
-    "lon": 65.64826651562936,
+    "lon": 65.64822887815902,
     "sign": 2,
     "deg": 5,
     "min": 38,
     "retrograde": true
   },
   "neptune": {
-    "lon": 3.124718410435414,
+    "lon": 3.12460334166861,
     "sign": 0,
     "deg": 3,
     "min": 7,
     "retrograde": true
   },
   "pluto": {
-    "lon": 303.2080677830157,
+    "lon": 303.20802195724406,
     "sign": 10,
     "deg": 3,
     "min": 12,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 196.94793266505448,
+    "lon": 198.14430267982516,
     "sign": 6,
-    "deg": 16,
-    "min": 56,
+    "deg": 18,
+    "min": 8,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 109.6195619161945,
+    "lon": 111.030867258756,
     "sign": 3,
-    "deg": 19,
-    "min": 37,
+    "deg": 21,
+    "min": 1,
     "retrograde": false
   }
 }

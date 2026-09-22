@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 179.18962865130374,
+    "lon": 179.1937027175435,
     "sign": 5,
     "deg": 29,
     "min": 11,
     "retrograde": false
   },
   "moon": {
-    "lon": 305.54281687668663,
+    "lon": 305.5935917860727,
     "sign": 10,
     "deg": 5,
-    "min": 32,
+    "min": 35,
     "retrograde": false
   },
   "mercury": {
-    "lon": 198.24922476230566,
+    "lon": 198.2554218428929,
     "sign": 6,
     "deg": 18,
-    "min": 14,
-    "retrograde": false
-  },
-  "venus": {
-    "lon": 216.26649710396188,
-    "sign": 7,
-    "deg": 6,
     "min": 15,
     "retrograde": false
   },
+  "venus": {
+    "lon": 216.2680855686425,
+    "sign": 7,
+    "deg": 6,
+    "min": 16,
+    "retrograde": false
+  },
   "mars": {
-    "lon": 116.47067443784671,
+    "lon": 116.4731720064359,
     "sign": 3,
     "deg": 26,
     "min": 28,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 137.9597285791848,
+    "lon": 137.9605220033476,
     "sign": 4,
     "deg": 17,
     "min": 57,
     "retrograde": false
   },
   "saturn": {
-    "lon": 12.259177424651636,
+    "lon": 12.258863333013368,
     "sign": 0,
     "deg": 12,
     "min": 15,
     "retrograde": true
   },
   "uranus": {
-    "lon": 65.64213988553354,
+    "lon": 65.64209995655635,
     "sign": 2,
     "deg": 5,
     "min": 38,
     "retrograde": true
   },
   "neptune": {
-    "lon": 3.1065256179774985,
+    "lon": 3.1064103994356915,
     "sign": 0,
     "deg": 3,
     "min": 6,
     "retrograde": true
   },
   "pluto": {
-    "lon": 303.2009123931447,
+    "lon": 303.2008676518175,
     "sign": 10,
     "deg": 3,
     "min": 12,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 99.04877938619083,
+    "lon": 100.34396320444722,
     "sign": 3,
-    "deg": 9,
-    "min": 2,
+    "deg": 10,
+    "min": 20,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 347.90967845586266,
+    "lon": 349.5391169682897,
     "sign": 11,
-    "deg": 17,
-    "min": 54,
+    "deg": 19,
+    "min": 32,
     "retrograde": false
   }
 }

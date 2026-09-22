@@ -1,86 +1,86 @@
 {
   "sun": {
-    "lon": 179.2466663141704,
+    "lon": 179.25074049369024,
     "sign": 5,
     "deg": 29,
-    "min": 14,
-    "retrograde": false
-  },
-  "moon": {
-    "lon": 306.25401337156,
-    "sign": 10,
-    "deg": 6,
     "min": 15,
     "retrograde": false
   },
+  "moon": {
+    "lon": 306.3048419450333,
+    "sign": 10,
+    "deg": 6,
+    "min": 18,
+    "retrograde": false
+  },
   "mercury": {
-    "lon": 198.3359566489456,
+    "lon": 198.34214953836695,
     "sign": 6,
     "deg": 18,
     "min": 20,
     "retrograde": false
   },
   "venus": {
-    "lon": 216.2886898842662,
+    "lon": 216.2902713117002,
     "sign": 7,
     "deg": 6,
     "min": 17,
     "retrograde": false
   },
   "mars": {
-    "lon": 116.50563751216295,
+    "lon": 116.50813463681168,
     "sign": 3,
     "deg": 26,
     "min": 30,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 137.97083462487748,
+    "lon": 137.97162775809448,
     "sign": 4,
     "deg": 17,
     "min": 58,
     "retrograde": false
   },
   "saturn": {
-    "lon": 12.254779322221728,
+    "lon": 12.254465104548807,
     "sign": 0,
     "deg": 12,
     "min": 15,
     "retrograde": true
   },
   "uranus": {
-    "lon": 65.6415795625092,
+    "lon": 65.6415394305562,
     "sign": 2,
     "deg": 5,
     "min": 38,
     "retrograde": true
   },
   "neptune": {
-    "lon": 3.104912478301792,
+    "lon": 3.104797247329033,
     "sign": 0,
     "deg": 3,
     "min": 6,
     "retrograde": true
   },
   "pluto": {
-    "lon": 303.2002866434437,
+    "lon": 303.2002419978713,
     "sign": 10,
     "deg": 3,
     "min": 12,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 116.52118834299081,
+    "lon": 117.72954813684623,
     "sign": 3,
-    "deg": 26,
-    "min": 31,
+    "deg": 27,
+    "min": 43,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 10.812384450986261,
+    "lon": 12.441204185481398,
     "sign": 0,
-    "deg": 10,
-    "min": 48,
+    "deg": 12,
+    "min": 26,
     "retrograde": false
   }
 }

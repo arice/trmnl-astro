@@ -13,6 +13,7 @@ GitHub Actions (dispatched from the droplet every 6 min)
     ↓
 trmnl_astrology.py
     ├── Calls Astrologer API /api/v5/chart-data/birth-chart → Gets JSON position data
+    ├── events.py → upcoming events for the next 45 days (pyswisseph)
     ├── renderers/production.py → Production chart SVG (800x480)
     ├── renderers/dev.py → Development chart SVG (for iteration)
     ├── svg_to_png_grayscale() → Converts to 4-level grayscale PNG for e-ink
@@ -29,6 +30,7 @@ TRMNL fetches and displays production chart
 ## Key Files
 
 - `trmnl_astrology.py` - Main script: fetches positions, renders both charts, sends webhook
+- `events.py` - Upcoming lunations, ingresses, stations and exact aspects, computed locally with pyswisseph (Moshier mode, no ephemeris files) for the right-hand panel
 - `renderers/` - Chart rendering modules
   - `base.py` - Shared glyphs, colors, and utilities
   - `production.py` - Stable production renderer (used by TRMNL)
@@ -71,7 +73,7 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
-pip install requests cairosvg pillow svgwrite pyyaml
+pip install requests cairosvg pillow svgwrite pyyaml pyswisseph
 
 # Run test with mock data (no API needed)
 python test_chart.py

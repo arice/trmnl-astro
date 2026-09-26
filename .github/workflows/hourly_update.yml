@@ -32,7 +32,7 @@ jobs:
           cp fonts/Astronomicon.ttf ~/.local/share/fonts/
           fc-cache -f
           fc-list | grep -q Astronomicon || { echo "Astronomicon did not register"; exit 1; }
-          pip install requests cairosvg pillow svgwrite pyyaml
+          pip install requests cairosvg pillow svgwrite pyyaml pyswisseph
       
       - name: Generate and update chart
         env:

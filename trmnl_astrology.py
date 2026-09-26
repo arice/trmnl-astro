@@ -54,14 +54,22 @@ CHART_PAYLOAD = {
         "longitude": LOCATION['longitude'],
         "latitude": LOCATION['latitude'],
         "timezone": LOCATION['timezone']
-    }
+    },
+    # Lunar nodes and the DC/IC axes are not in the API's default set;
+    # anything left off this list is silently absent from the response.
+    "active_points": [
+        "Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn",
+        "Uranus", "Neptune", "Pluto", "Mean_North_Lunar_Node",
+        "Mean_South_Lunar_Node", "Ascendant", "Medium_Coeli",
+        "Descendant", "Imum_Coeli",
+    ],
 }
 
 # Bodies to display (from config)
 BODIES = CONFIG.get('bodies', [
     'sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter',
     'saturn', 'uranus', 'neptune', 'pluto', 'mean_north_lunar_node',
-    'mean_south_lunar_node', 'ascendant', 'medium_coeli'
+    'mean_south_lunar_node', 'ascendant', 'medium_coeli', 'descendant', 'imum_coeli'
 ])
 
 
@@ -99,7 +107,11 @@ def get_positions():
     positions = {}
     subject = data["chart_data"]["subject"]
 
-    for body in BODIES:
+    # Parse everything the payload asked for, not just the configured bodies:
+    # the dev renderer shows nodes and DC/IC even while config.yaml does not.
+    wanted = list(dict.fromkeys(BODIES + ['mean_north_lunar_node', 'mean_south_lunar_node',
+                                          'descendant', 'imum_coeli']))
+    for body in wanted:
         if body in subject and subject[body] is not None:
             pos = subject[body]
             abs_pos = pos.get('abs_pos', 0)
@@ -222,6 +234,11 @@ def main():
 
         # Render both chart variants
         print("\n--- Production Chart ---")
+        try:
+            from events import upcoming_events
+            CONFIG['events'] = upcoming_events()
+        except Exception as exc:          # the wheel must still ship
+            print(f"Warning: could not compute upcoming events: {exc}")
         svg_prod = render_production(positions, CONFIG)
         svg_to_png_grayscale(svg_prod, OUTPUT_PATH_PROD)
 

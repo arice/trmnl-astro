@@ -33,7 +33,7 @@ from .base import (
     ASTRO_SIGN_GLYPHS as SIGN_GLYPHS,
     ASTRO_RETROGRADE_GLYPH as RETROGRADE_GLYPH,
     MOON_PHASES, DARK_GRAY,
-    get_moon_phase, get_house_number, ordinal
+    get_moon_phase, get_house_number
 )
 
 # GLYPH_FONT draws astrological symbols and nothing else; TEXT_FONT draws every
@@ -51,9 +51,10 @@ LIGHT_GRAY = '#aaaaaa'
 _ASTRO_W = {'Q': .77, 'R': .52, 'S': .46, 'T': .47, 'U': .77, 'V': .62, 'W': .48,
             'X': .56, 'Y': .55, 'Z': .51, 'g': .6, 'i': .6,
             'A': .60, 'B': .56, 'C': .56, 'D': .81, 'E': .65, 'F': .68, 'G': .90,
-            'H': .85, 'I': .72, 'J': .68, 'K': .89, 'L': .56, 'M': .31}
-_TEXT_W = {'\u00B0': .50, "'": .28}      # digits are .636
-_BOLD_W = {'A': .80, 'C': .71, 'M': .96}
+            'H': .85, 'I': .72, 'J': .68, 'K': .89, 'L': .56, 'M': .31,
+            '!': .55, '"': .55, '#': .55, '$': .60, '%': .60}
+_TEXT_W = {'\u00B0': .50, "'": .28, ' ': .32, '\u2192': .84}      # digits are .636
+_BOLD_W = {'A': .80, 'C': .71, 'M': .96, 'D': .83, 'I': .40}
 
 
 def _text_w(s, size, bold=False):
@@ -98,7 +99,13 @@ def _overlaps(a, b, pad):
 def render(positions, config):
     """Chart with each body's details stacked along its own ray."""
     location = config['location']
-    bodies = config.get('bodies', list(BODY_GLYPHS.keys()))
+    bodies = list(config.get('bodies', list(BODY_GLYPHS.keys())))
+    # Nodes and the DC/IC axes ride along whenever the fetch supplied them,
+    # without touching config.yaml, so production's legend keeps its 12 rows
+    # until this design is promoted.
+    for extra in ('mean_north_lunar_node', 'mean_south_lunar_node', 'descendant', 'imum_coeli'):
+        if extra in positions and extra not in bodies:
+            bodies.append(extra)
     display = config.get('display', {})
     show_retrograde = display.get('show_retrograde', True)
     show_moon_phase = display.get('show_moon_phase', True)
@@ -125,6 +132,9 @@ def render(positions, config):
     PIECE_GAP = 3          # between pieces within a column
     COLUMN_PAD = 3         # between pieces of neighbouring columns
 
+    AXES = {'ascendant': 'AC', 'medium_coeli': 'MC',
+            'descendant': 'DC', 'imum_coeli': 'IC'}
+
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
     rotation_offset = 180 - asc_lon
 
@@ -135,8 +145,8 @@ def render(positions, config):
         """(text, font, size, bold, w, h, baseline_offset) outermost first."""
         pos = positions[body]
         out = []
-        if body in ('ascendant', 'medium_coeli'):
-            name = 'AC' if body == 'ascendant' else 'MC'
+        if body in AXES:
+            name = AXES[body]
             out.append((name, TEXT_FONT, AXIS_SIZE, True,
                         _text_w(name, AXIS_SIZE, True), .76 * AXIS_SIZE, .37 * AXIS_SIZE))
         else:
@@ -293,61 +303,125 @@ def render(positions, config):
             dwg.add(dwg.text(text, insert=(cx, cy + base_off), text_anchor='middle',
                              font_size=f'{size}px', font_family=font, fill='black', **kw))
 
-    # === RIGHT SIDE: Legend panel (unchanged) ===
-    legend_x = 488
-    legend_y_start = 32       # baseline; 15 put the cap-height above the canvas
-    line_height = 30
-    # Astronomicon sets smaller than a text face at the same nominal size, so the
-    # legend glyphs step up and the figures step down to bring them into balance.
-    LEGEND_GLYPH_SIZE = 30
-    LEGEND_TEXT_SIZE = 20
-    asc_sign = positions.get('ascendant', {}).get('sign', 0)
+    # === RIGHT SIDE: Upcoming events ===
+    # The wheel now carries every current position, so the panel looks ahead
+    # instead of repeating it. Events come from events.py via config['events'];
+    # without them the panel just shows the Moon.
+    panel_x = 488
+    panel_right = 796
+    header_y = 32
+    ROW = 26
+    ROW_SIZE = 18
+    ROW_GLYPH = 24          # Astronomicon sets small; step it up to match the text
+    DATE_W = 90             # date column
+    tz = ZoneInfo(location['timezone'])
+    events = config.get('events') or []
 
-    # Anchor the header from the left rather than centring it. The title is bold,
-    # and the bold face is ~15% wider than the regular one, so a centred title
-    # grows out to both sides -- enough to run into the moon on a machine that
-    # has the bold face when the machine it was tuned on did not. Anchored left,
-    # the gap is fixed whatever the font does.
+    def aspect_glyph(angle):
+        from .base import ASTRO_ASPECT_GLYPHS
+        return ASTRO_ASPECT_GLYPHS[angle]
+
+    def deg_sign(lon):
+        """Pieces for a longitude as '17°' + sign glyph."""
+        return [(f"{int(lon % 30)}\u00B0", TEXT_FONT, ROW_SIZE),
+                (SIGN_GLYPHS[int(lon // 30)], GLYPH_FONT, ROW_GLYPH)]
+
+    def describe(e):
+        """Row pieces for one event: list of (text, font, size)."""
+        G, T = GLYPH_FONT, TEXT_FONT
+        b = BODY_GLYPHS[e['body']]
+        if e['kind'] == 'lunation':
+            return [(('New' if e['phase'] == 'new' else 'Full') + ' Moon ', T, ROW_SIZE)] + deg_sign(e['lon'])
+        if e['kind'] == 'ingress':
+            rx = [(RETROGRADE_GLYPH, G, ROW_GLYPH)] if e['retrograde'] else []
+            return [(b, G, ROW_GLYPH)] + rx + [(' \u2192 ', T, ROW_SIZE),
+                                               (SIGN_GLYPHS[e['sign']], G, ROW_GLYPH)]
+        if e['kind'] == 'station':
+            if e['direction'] == 'retrograde':
+                return [(b, G, ROW_GLYPH), (' stations ', T, ROW_SIZE), (RETROGRADE_GLYPH, G, ROW_GLYPH)]
+            return [(b, G, ROW_GLYPH), (' stations direct', T, ROW_SIZE)]
+        if e['kind'] == 'aspect':
+            return [(b, G, ROW_GLYPH), (' ', T, ROW_SIZE), (aspect_glyph(e['angle']), G, ROW_GLYPH),
+                    (' ', T, ROW_SIZE), (BODY_GLYPHS[e['other']], G, ROW_GLYPH),
+                    ('  ', T, ROW_SIZE)] + deg_sign(e['lon'])
+        return []
+
+    def draw_pieces(x, y, pieces, fill='black'):
+        """One <text> with a <tspan> per piece, so the renderer measures the
+        widths itself and mixed faces butt up correctly. Spaces become NBSP
+        because a tspan's leading or trailing space is collapsed."""
+        t = dwg.text('', insert=(x, y), fill=fill)
+        for text, font, size in pieces:
+            t.add(dwg.tspan(text.replace(' ', '\u00A0'),
+                            font_size=f'{size}px', font_family=font))
+        dwg.add(t)
+
+    def when_text(e, with_time):
+        local = e['when'].astimezone(tz)
+        if with_time:
+            return local.strftime('%a %-I:%M%p').replace('AM', 'am').replace('PM', 'pm')
+        return local.strftime('%b %-d')
+
+    # -- header: Moon phase and illumination, the one "now" fact worth a line --
     moon_idx = get_moon_phase(positions) if show_moon_phase else None
-    title_x = legend_x + (34 if moon_idx is not None else 2)
-    dwg.add(dwg.text('Planetary Positions', insert=(title_x, legend_y_start),
-                     text_anchor='start', font_size='22px',
-                     font_family=TEXT_FONT, fill='black', font_weight='bold'))
     if moon_idx is not None:
-        mcx, mcy, mr = legend_x + 13, legend_y_start - 7, 9
+        mcx, mcy, mr = panel_x + 14, header_y - 8, 12
         dwg.add(dwg.circle(center=(mcx, mcy), r=mr, fill='white',
                            stroke='black', stroke_width=1.5))
-        if moon_idx != 0:
-            dwg.add(dwg.path(d=_moon_path(mcx, mcy, mr, moon_idx),
+        # Ink is the shadow: the lit part of the disc stays paper-white, so a
+        # full Moon is an empty circle and a new Moon a solid one. The dark
+        # region of any phase is exactly the lit region of the opposite phase.
+        if moon_idx != 4:
+            dwg.add(dwg.path(d=_moon_path(mcx, mcy, mr, (moon_idx + 4) % 8),
                              fill='black', stroke='none'))
-    dwg.add(dwg.line(start=(legend_x, legend_y_start + 12),
-                     end=(legend_x + 300, legend_y_start + 12),
+        elong = (positions['moon']['lon'] - positions['sun']['lon']) % 360
+        lit = (1 - math.cos(math.radians(elong))) / 2
+        names = ['New Moon', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous',
+                 'Full Moon', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent']
+        title = f"{names[moon_idx]}  {round(lit * 100)}%"
+    else:
+        title = 'Upcoming'
+    dwg.add(dwg.text(title, insert=(panel_x + 36, header_y), font_size='22px',
+                     font_family=TEXT_FONT, fill='black', font_weight='bold'))
+    dwg.add(dwg.line(start=(panel_x, header_y + 12), end=(panel_right, header_y + 12),
                      stroke='black', stroke_width=1))
 
-    y = legend_y_start + 40
-    for body in bodies:
-        if body in positions:
-            pos = positions[body]
-            is_axis_row = body in ('ascendant', 'medium_coeli')
-            dwg.add(dwg.text(BODY_GLYPHS[body], insert=(legend_x + 10, y),
-                             font_size=f'{24 if is_axis_row else LEGEND_GLYPH_SIZE}px',
-                             font_family=TEXT_FONT if is_axis_row else GLYPH_FONT,
-                             fill='black', font_weight='bold'))
-            dwg.add(dwg.text(SIGN_GLYPHS[pos['sign']], insert=(legend_x + 72, y),
-                             font_size=f'{LEGEND_GLYPH_SIZE}px',
-                             font_family=GLYPH_FONT, fill='black'))
-            dwg.add(dwg.text(f"{pos['deg']:02d}°{pos['min']:02d}'", insert=(legend_x + 118, y),
-                             font_size=f'{LEGEND_TEXT_SIZE}px', font_family=TEXT_FONT,
-                             fill='black'))
-            if show_retrograde and pos.get('retrograde', False):
-                dwg.add(dwg.text(RETROGRADE_GLYPH, insert=(legend_x + 196, y),
-                                 font_size='20px', font_family=GLYPH_FONT, fill='black'))
-            if show_house_numbers and body not in ['ascendant', 'medium_coeli']:
-                dwg.add(dwg.text(ordinal(get_house_number(pos['sign'], asc_sign)),
-                                 insert=(legend_x + 238, y),
-                                 font_size=f'{LEGEND_TEXT_SIZE}px',
-                                 font_family=TEXT_FONT, fill='black'))
-            y += line_height
+    # -- rows: the next lunation, the next ingress or station, and the Moon's
+    #    next aspect come first; then everything else in date order. Moon
+    #    ingresses and Sun-Moon aspects are dropped as noise (the lunations
+    #    already cover the conjunction and opposition).
+    def is_noise(e):
+        if e['kind'] == 'aspect' and {e['body'], e['other']} == {'sun', 'moon'}:
+            return True
+        return e['kind'] in ('ingress', 'aspect') and e['body'] == 'moon'
+
+    lead = []
+    nxt = next((e for e in events if e['kind'] == 'lunation'), None)
+    if nxt:
+        lead.append((nxt, False))
+    nxt = next((e for e in events if e['kind'] in ('ingress', 'station') and e['body'] != 'moon'), None)
+    if nxt:
+        lead.append((nxt, False))
+    nxt = next((e for e in events if e['kind'] == 'aspect' and e['body'] == 'moon'
+                and e['other'] != 'sun'), None)
+    if nxt:
+        lead.append((nxt, True))
+    shown = {id(e) for e, _ in lead}
+    rest = [(e, False) for e in events if not is_noise(e) and id(e) not in shown]
+
+    y = header_y + 40
+    bottom = 450
+    for i, (e, with_time) in enumerate(lead + rest):
+        if y > bottom:
+            break
+        if i == len(lead) and lead:
+            dwg.add(dwg.line(start=(panel_x, y - ROW + 8), end=(panel_right, y - ROW + 8),
+                             stroke=LIGHT_GRAY, stroke_width=1))
+            y += 6
+        dwg.add(dwg.text(when_text(e, with_time), insert=(panel_x + 2, y),
+                         font_size='14px', font_family=TEXT_FONT, fill=DARK_GRAY))
+        draw_pieces(panel_x + DATE_W, y, describe(e))
+        y += ROW
 
     now_local = datetime.now(ZoneInfo(location['timezone']))
     stamp = f"{now_local.strftime('%B %d %Y')} {now_local.strftime('%-I:%M %p').lower()}"

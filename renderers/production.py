@@ -288,7 +288,7 @@ def render(positions, config):
     # === RIGHT SIDE: Legend panel (unchanged) ===
     legend_x = 488
     legend_y_start = 32       # baseline; 15 put the cap-height above the canvas
-    line_height = 30
+    line_height = 27      # 14 rows once the nodes arrive; 30 ran MC into the footer
     # Astronomicon sets smaller than a text face at the same nominal size, so the
     # legend glyphs step up and the figures step down to bring them into balance.
     LEGEND_GLYPH_SIZE = 30

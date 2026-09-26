@@ -19,7 +19,9 @@ BODY_GLYPHS = {
     'mean_north_lunar_node': '\u260A',  # ☊ (North Node)
     'mean_south_lunar_node': '\u260B',  # ☋ (South Node)
     'ascendant': 'ASC',
-    'medium_coeli': 'MC'
+    'medium_coeli': 'MC',
+    'descendant': 'DC',
+    'imum_coeli': 'IC',
 }
 
 SIGN_GLYPHS = [
@@ -56,12 +58,17 @@ ASTRO_BODY_GLYPHS = {
     'mean_south_lunar_node': 'i',
     'ascendant': 'ASC',      # drawn in the text face, not the symbol face
     'medium_coeli': 'MC',
+    'descendant': 'DC',
+    'imum_coeli': 'IC',
 }
 
 ASTRO_SIGN_GLYPHS = list('ABCDEFGHIJKL')
 
 # Retrograde mark in Astronomicon.
 ASTRO_RETROGRADE_GLYPH = 'M'
+
+# Ptolemaic aspects in Astronomicon, keyed by angle. Read off the font's map.
+ASTRO_ASPECT_GLYPHS = {0: '!', 180: '"', 90: '#', 120: '$', 60: '%'}
 
 # Moon phase symbols (8 phases)
 MOON_PHASES = [

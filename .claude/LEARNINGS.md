@@ -145,6 +145,16 @@ Gotchas only. Non-obvious constraints and mistakes worth not repeating.
   that eyeballing two charts had missed. Watch the audit's own bugs though: initialising a
   running `min` at 0 reports a reassuring "leftmost = 0.0" no matter what the data says.
 
+- **Never estimate text widths to butt mixed-font pieces together.** A row like
+  `☿ □ ♂ 2°♏` mixes Astronomicon and DejaVu at two sizes; laying it out from per-character
+  width tables produced "New Moon17°" because letters are not digit-width. One `<text>` with
+  a `<tspan>` per piece lets the renderer measure the real glyphs. Leading/trailing spaces
+  in a tspan collapse, so use NBSP (U+00A0) for spacing inside the row.
+
+- **Moon icon on paper: ink is the shadow.** Painting the *lit* part black made the full Moon
+  a solid black disc, which reads as new. Paint the dark part instead; the dark region of any
+  phase is exactly the lit region of the opposite phase (`(idx + 4) % 8`).
+
 ## Fonts
 
 - **The workflow's font download 404'd for the life of the project, silently.** `curl -L -o
@@ -189,9 +199,17 @@ Gotchas only. Non-obvious constraints and mistakes worth not repeating.
 
 ## Data
 
-- **The API returns 12 bodies, not 14.** `config.yaml` lists `mean_north_lunar_node` and
-  `mean_south_lunar_node`, but the Astrologer response omits them, so renderers silently skip
-  them. (CLAUDE.md's "all 13 bodies" is also wrong.) Don't debug missing nodes in the renderer.
+- **The API only returns points you ask for.** Nodes, DC and IC are absent from
+  `/chart-data/birth-chart` unless the request carries a top-level `active_points` list
+  (`Mean_North_Lunar_Node`, `Descendant`, `Imum_Coeli`, ...). The response keys are the
+  snake_case of those names. Before 2026-09-26 the payload had no `active_points`, which is
+  why the nodes listed in `config.yaml` never rendered. Source of truth: `openapi.json` in the
+  Astrologer-API repo, not its README.
+
+- **Nothing the API exposes looks ahead.** Its moon-phase endpoint gives next new/full dates
+  but no degree, and there is no ingress, station or aspect endpoint. `events.py` computes
+  all of it locally with pyswisseph in Moshier mode (`FLG_MOSEPH`), which needs no ephemeris
+  files; Chiron is the exception (needs `seas_18.se1`), so it is not offered.
 
 ## Workflow
 

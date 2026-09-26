@@ -25,6 +25,7 @@ import yaml
 from PIL import Image
 
 from renderers import render_production, render_dev
+from events import upcoming_events
 
 # Load config
 with open('config.yaml', 'r') as f:
@@ -44,7 +45,32 @@ _FALLBACK_POSITIONS = {
     'pluto':   {'lon': 304.75, 'sign': 10, 'deg':  4, 'min': 45, 'retrograde': False},
     'ascendant':   {'lon':  84.60, 'sign': 2, 'deg': 24, 'min': 36, 'retrograde': False},
     'medium_coeli': {'lon': 330.88, 'sign': 11, 'deg':  0, 'min': 53, 'retrograde': False},
+    'mean_north_lunar_node': {'lon': 335.10, 'sign': 11, 'deg': 5, 'min': 6, 'retrograde': True},
+    'mean_south_lunar_node': {'lon': 155.10, 'sign': 5, 'deg': 5, 'min': 6, 'retrograde': True},
 }
+
+
+def _fill_derived(positions):
+    """DC/IC are opposite ASC/MC; older position files predate them."""
+    for src, dst in (('ascendant', 'descendant'), ('medium_coeli', 'imum_coeli')):
+        if src in positions and dst not in positions:
+            lon = (positions[src]['lon'] + 180) % 360
+            positions[dst] = {'lon': lon, 'sign': int(lon // 30), 'deg': int(lon % 30),
+                              'min': int((lon % 1) * 60), 'retrograde': False}
+    # Nodes only reach last_positions.json once CI runs the active_points payload;
+    # until then compute the mean node locally so the layout can be judged.
+    if 'mean_north_lunar_node' not in positions:
+        try:
+            import swisseph as swe
+            now = datetime.now(timezone.utc)
+            jd = swe.julday(now.year, now.month, now.day, now.hour + now.minute / 60)
+            lon = swe.calc_ut(jd, swe.MEAN_NODE, swe.FLG_MOSEPH)[0][0]
+            for body, l in (('mean_north_lunar_node', lon), ('mean_south_lunar_node', (lon + 180) % 360)):
+                positions[body] = {'lon': l, 'sign': int(l // 30), 'deg': int(l % 30),
+                                   'min': int((l % 1) * 60), 'retrograde': True}
+        except ImportError:
+            pass
+    return positions
 
 _POSITIONS_FILE = 'docs/last_positions.json'
 _PAGES_URL = 'https://arice.github.io/trmnl-astro/last_positions.json'
@@ -132,7 +158,8 @@ def load_positions():
     return _FALLBACK_POSITIONS
 
 
-POSITIONS = load_positions()
+POSITIONS = _fill_derived(load_positions())
+CONFIG['events'] = upcoming_events()
 if '--fallback' not in sys.argv:
     _warn_if_wrong_day(POSITIONS)
 

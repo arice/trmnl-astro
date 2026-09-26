@@ -10,24 +10,17 @@ The render() function receives the same inputs as production:
 
 Output: SVG string (800x480)
 
-Current design: big glyphs held at their true zodiac angle.
+Current design: radial columns, after the classic desktop chart layout.
 
-The governing idea is that a glyph's *angle* is the information. Two planets a
-degree apart cannot both be drawn at full size on their own ray, so something has
-to give, and there are only two directions to give in:
+Each body is a column of upright pieces running inward from the sign ring along
+its own ray: glyph, whole degree, sign, arcminute, retrograde mark. The wheel
+fills the full panel height, so a column has ~130px of depth to work with.
 
-    sideways  - slide the glyph around the ring. Cheap on space, but it moves the
-                glyph off its true angle, which is the one thing the wheel is for.
-    outward   - push the glyph further out along the *same* ray. Costs radial
-                depth, but the angle stays exactly right.
-
-So placement searches outward first and only slides sideways when it runs out of
-depth. Every glyph sits as near the rim as it can, and a leader line runs from a
-tick at the planet's real position out to it - usually dead straight, because the
-angle usually did not have to move at all.
-
-The legend carries sign, arcminutes, retrograde and house, so the wheel does not
-repeat any of it.
+Only the angle can give when columns collide, so placement is one-dimensional:
+bodies keep their zodiac order, each adjacent pair gets the smallest angular gap
+at which their pieces clear, and crowded runs spread symmetrically about their
+true angles. A short leader joins a tick at the true position to any column
+that had to move.
 """
 
 import math
@@ -50,23 +43,22 @@ from .base import (
 GLYPH_FONT = 'Astronomicon'
 TEXT_FONT = 'DejaVu Sans, Arial, sans-serif'
 
-# Panel the wheel and its labels live in; the legend owns everything to the right.
-PANEL = (4, 4, 430, 476)        # left, top, right, bottom
+LIGHT_GRAY = '#aaaaaa'
+
+# Ink widths as a fraction of font size, measured with PIL from the vendored
+# Astronomicon and DejaVu Sans. Vertical: DejaVu ink sits 0.75 above the
+# baseline to 0.01 below; Astronomicon 0.70 above to 0.10 below.
+_ASTRO_W = {'Q': .77, 'R': .52, 'S': .46, 'T': .47, 'U': .77, 'V': .62, 'W': .48,
+            'X': .56, 'Y': .55, 'Z': .51, 'g': .6, 'i': .6,
+            'A': .60, 'B': .56, 'C': .56, 'D': .81, 'E': .65, 'F': .68, 'G': .90,
+            'H': .85, 'I': .72, 'J': .68, 'K': .89, 'L': .56, 'M': .31}
+_TEXT_W = {'\u00B0': .50, "'": .28}      # digits are .636
+_BOLD_W = {'A': .80, 'C': .71, 'M': .96}
 
 
-def _box_exit(box, ux, uy):
-    """Distance from a label's anchor to its own box edge along (ux, uy)."""
-    l, r, u, d = box
-    t = 1e9
-    if ux > 1e-9:
-        t = min(t, r / ux)
-    elif ux < -1e-9:
-        t = min(t, l / -ux)
-    if uy > 1e-9:
-        t = min(t, d / uy)
-    elif uy < -1e-9:
-        t = min(t, u / -uy)
-    return t
+def _text_w(s, size, bold=False):
+    table = _BOLD_W if bold else _TEXT_W
+    return size * sum(table.get(ch, .636) for ch in s)
 
 
 # Sweep flags for the limb and terminator arcs of each phase. Derived by
@@ -104,7 +96,7 @@ def _overlaps(a, b, pad):
 
 
 def render(positions, config):
-    """Chart with large glyphs pinned to their true zodiac angle."""
+    """Chart with each body's details stacked along its own ray."""
     location = config['location']
     bodies = config.get('bodies', list(BODY_GLYPHS.keys()))
     display = config.get('display', {})
@@ -116,85 +108,22 @@ def render(positions, config):
     dwg.add(dwg.rect(insert=(0, 0), size=('800px', '480px'), fill='white'))
 
     # === LEFT SIDE: Zodiac wheel ===
-    wheel_cx, wheel_cy = 216, 240
-    outer_r = 92
-    inner_r = 62          # 30px band, sized for the 24px sign glyphs
+    wheel_cx, wheel_cy = 238, 240
+    outer_r = 234
+    inner_r = 202          # 32px band for the sign glyphs
     sign_glyph_r = (outer_r + inner_r) / 2
-    tick_outer = outer_r + 8
+    hub_r = 52
+    TICK = 7
 
-    # Planet and sign glyphs are kept within ~1.7x of each other so the wheel
-    # reads as one object rather than big symbols orbiting fine print. Dropping
-    # the planets from 58 to 48 also costs far less than it sounds: it takes
-    # glyphs sitting at their exactly-true angle from 72% to 85%, because a
-    # smaller glyph needs to be bumped out to a further radius less often.
-    GLYPH_SIZE = 40
-    DEGREE_SIZE = GLYPH_SIZE // 2   # degrees ride under each glyph at half its size
-    SIGN_GLYPH_SIZE = 24
-    ANGLE_SIZE = 22                 # ASC / MC are reference axes, not planets
-
-    # Every wheel label is a glyph stacked over its degree, so both the planets
-    # and the two axes read the same way. Measured proportions, not guesses:
-    # Astronomicon's widest planet is 0.775 of its size and 0.825 tall, and a
-    # three-character degree in the text face runs about 1.75 of its own size.
-    _GLYPH_W = 0.78 * GLYPH_SIZE
-    _GLYPH_H = 0.83 * GLYPH_SIZE
-    _DEG_W = 1.75 * DEGREE_SIZE
-    _DEG_H = 0.75 * DEGREE_SIZE
-    _NAME_W = 1.90 * ANGLE_SIZE     # "ASC" is the widest axis name
-    _NAME_H = 0.75 * ANGLE_SIZE
-
-    # 'below' stacks the degree under its glyph; 'right' sets it alongside.
-    # Stacked labels are narrow and tall, side-by-side ones wide and short, and
-    # the panel has far more room vertically than horizontally, so the choice
-    # costs real accuracy - see the comparison in the dev log.
-    DEGREE_PLACEMENT = 'right'
-    _GAP = 6
-
-    if DEGREE_PLACEMENT == 'right':
-        # End the glyph and start the figure either side of the anchor, rather
-        # than centring each in a slot cut for the widest possible one. Centring
-        # made the gap depend on how narrow that particular glyph and degree
-        # happened to be: 6px after the Sun and 20 degrees, 18px after Pluto
-        # and 3. Anchoring the facing edges makes it exactly _GAP every time.
-        GLYPH_BASELINE = _GLYPH_H / 2
-        DEGREE_BASELINE = _DEG_H / 2
-        NAME_BASELINE = _NAME_H / 2
-        ANGLE_DEG_BASELINE = _DEG_H / 2
-        GLYPH_ANCHOR, DEGREE_ANCHOR = 'end', 'start'
-        GLYPH_DX = -_GAP / 2
-        DEGREE_DX = _GAP / 2
-        NAME_DX = -_GAP / 2
-        ANGLE_DEG_DX = _GAP / 2
-        GLYPH_BOX = (_GAP / 2 + _GLYPH_W + 2, _GAP / 2 + _DEG_W + 2,
-                     _GLYPH_H / 2 + 2, _GLYPH_H / 2 + 2)
-        ANGLE_BOX = (_GAP / 2 + _NAME_W + 2, _GAP / 2 + _DEG_W + 2,
-                     _NAME_H / 2 + 2, _NAME_H / 2 + 2)
-    else:
-        GLYPH_BASELINE = -0.05 * GLYPH_SIZE
-        DEGREE_BASELINE = GLYPH_BASELINE + 0.45 * GLYPH_SIZE
-        NAME_BASELINE = -0.05 * GLYPH_SIZE
-        ANGLE_DEG_BASELINE = NAME_BASELINE + 0.45 * GLYPH_SIZE
-        GLYPH_ANCHOR = DEGREE_ANCHOR = 'middle'
-        GLYPH_DX = DEGREE_DX = NAME_DX = ANGLE_DEG_DX = 0
-        _GH = max(_GLYPH_W, _DEG_W) / 2 + 2
-        GLYPH_BOX = (_GH, _GH, _GLYPH_H - GLYPH_BASELINE, DEGREE_BASELINE)
-        _AH = max(_NAME_W, _DEG_W) / 2 + 2
-        ANGLE_BOX = (_AH, _AH, _NAME_H - NAME_BASELINE, ANGLE_DEG_BASELINE)
-
-    # Search preferences. Radial displacement keeps the angle honest, so it is
-    # made cheap; angular displacement is what we are trying not to spend.
-    ANGLE_STEP = 1.5         # degrees per sideways step
-    ANGLE_LIMIT = 120        # furthest a glyph may ever be slid sideways
-    RADIAL_STEP = 5          # px per outward step
-    RADIAL_COST = 0.028      # cost of 1px outward, relative to 1 degree sideways
-    LABEL_PAD = 5
-
-    # A leader line only earns its place when the glyph is genuinely hard to
-    # attribute: either sitting off its own ray, or far enough out that the eye
-    # needs help bridging the gap. A glyph resting on the rim at its exact angle
-    # needs no pointer, and drawing one anyway just adds clutter.
-    LEADER_MIN_LATERAL = 6      # px off the true ray
-    LEADER_MIN_GAP = 30         # px of clear space between rim and glyph
+    SIGN_GLYPH_SIZE = 26
+    GLYPH_SIZE = 32        # planet glyph heads each column
+    AXIS_SIZE = 20         # AC / MC, bold text
+    DEGREE_SIZE = 20
+    SIGN_SIZE = 20
+    MINUTE_SIZE = 14
+    RX_SIZE = 24
+    PIECE_GAP = 3          # between pieces within a column
+    COLUMN_PAD = 3         # between pieces of neighbouring columns
 
     asc_lon = positions.get('ascendant', {}).get('lon', 0)
     rotation_offset = 180 - asc_lon
@@ -202,206 +131,170 @@ def render(positions, config):
     def to_screen_angle(zodiac_lon):
         return math.radians(zodiac_lon + rotation_offset)
 
-    def box_at(cx, cy, box):
-        l, r, u, d = box
-        return (cx - l, cy - u, cx + r, cy + d)
+    def pieces_for(body):
+        """(text, font, size, bold, w, h, baseline_offset) outermost first."""
+        pos = positions[body]
+        out = []
+        if body in ('ascendant', 'medium_coeli'):
+            name = 'AC' if body == 'ascendant' else 'MC'
+            out.append((name, TEXT_FONT, AXIS_SIZE, True,
+                        _text_w(name, AXIS_SIZE, True), .76 * AXIS_SIZE, .37 * AXIS_SIZE))
+        else:
+            g = BODY_GLYPHS[body]
+            out.append((g, GLYPH_FONT, GLYPH_SIZE, False,
+                        _ASTRO_W.get(g, .7) * GLYPH_SIZE, .8 * GLYPH_SIZE, .30 * GLYPH_SIZE))
+        deg = f"{pos['deg']}\u00B0"
+        out.append((deg, TEXT_FONT, DEGREE_SIZE, False,
+                    _text_w(deg, DEGREE_SIZE), .76 * DEGREE_SIZE, .37 * DEGREE_SIZE))
+        s = SIGN_GLYPHS[pos['sign']]
+        out.append((s, GLYPH_FONT, SIGN_SIZE, False,
+                    _ASTRO_W[s] * SIGN_SIZE, .7 * SIGN_SIZE, .30 * SIGN_SIZE))
+        mins = f"{pos['min']:02d}'"
+        out.append((mins, TEXT_FONT, MINUTE_SIZE, False,
+                    _text_w(mins, MINUTE_SIZE), .76 * MINUTE_SIZE, .37 * MINUTE_SIZE))
+        if show_retrograde and pos.get('retrograde', False):
+            out.append((RETROGRADE_GLYPH, GLYPH_FONT, RX_SIZE, False,
+                        _ASTRO_W['M'] * RX_SIZE, .45 * RX_SIZE, .30 * RX_SIZE))
+        return out
 
-    def radial_extent(theta, box):
-        """How deep a label reaches along its own ray."""
-        l, r, u, d = box
-        return abs(math.cos(theta)) * max(l, r) + abs(math.sin(theta)) * max(u, d)
+    def layout_column(pieces, theta, displaced):
+        """Centre point and box of every piece, walking inward along theta."""
+        c, s = math.cos(theta), math.sin(theta)
+        edge = inner_r - TICK - (8 if displaced else 3)
+        placed = []
+        for p in pieces:
+            w, h = p[4], p[5]
+            ext = abs(c) * w / 2 + abs(s) * h / 2
+            r = edge - ext
+            cx, cy = wheel_cx + r * c, wheel_cy - r * s
+            placed.append((p, cx, cy, (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)))
+            edge = r - ext - PIECE_GAP
+        return placed
 
-    def r_bounds(theta, box):
-        """Nearest and furthest this label's centre can sit on this ray.
+    def columns_clash(pa, ta, pb, tb):
+        ra = [q[3] for q in layout_column(pa, ta, True)]
+        rb = [q[3] for q in layout_column(pb, tb, True)]
+        return any(_overlaps(a, b, COLUMN_PAD) for a in ra for b in rb)
 
-        The far bound solves the panel rectangle directly rather than inscribing
-        an ellipse in it, so the corners stay usable.
-        """
-        l, r, u, d = box
-        dx, dy = math.cos(theta), -math.sin(theta)      # screen y grows downward
-        far = 1e5
-        if dx > 1e-6:
-            far = min(far, (PANEL[2] - r - wheel_cx) / dx)
-        elif dx < -1e-6:
-            far = min(far, (PANEL[0] + l - wheel_cx) / dx)
-        if dy > 1e-6:
-            far = min(far, (PANEL[3] - d - wheel_cy) / dy)
-        elif dy < -1e-6:
-            far = min(far, (PANEL[1] + u - wheel_cy) / dy)
-        near = tick_outer + 6 + radial_extent(theta, box)
-        return near, max(far, near)
+    def required_gap(pa, pb, mid):
+        """Smallest angular gap (radians) at which two columns centred on mid clear."""
+        d = 0.0
+        step = math.radians(0.5)
+        while d < math.radians(60):
+            if not columns_clash(pa, mid - d / 2, pb, mid + d / 2):
+                return d
+            d += step
+        return d
 
-    # --- wheel -------------------------------------------------------------
-    dwg.add(dwg.circle(center=(wheel_cx, wheel_cy), r=outer_r,
-                       stroke='black', stroke_width=2, fill='none'))
-    dwg.add(dwg.circle(center=(wheel_cx, wheel_cy), r=inner_r,
-                       stroke='black', stroke_width=2, fill='none'))
-    for i in range(12):
-        a = to_screen_angle(i * 30)
-        dwg.add(dwg.line(start=(wheel_cx, wheel_cy),
-                         end=(wheel_cx + outer_r * math.cos(a),
-                              wheel_cy - outer_r * math.sin(a)),
-                         stroke='black', stroke_width=1))
-        mid = to_screen_angle(i * 30 + 15)
-        dwg.add(dwg.text(SIGN_GLYPHS[i],
-                         insert=(wheel_cx + sign_glyph_r * math.cos(mid),
-                                 wheel_cy - sign_glyph_r * math.sin(mid) + 0.34 * SIGN_GLYPH_SIZE),
-                         text_anchor='middle', font_size=f'{SIGN_GLYPH_SIZE}px',
-                         font_family=GLYPH_FONT, fill='black'))
-
-    # --- placement ---------------------------------------------------------
-    # Two hard rules, in this order of importance:
-    #
-    #   1. Order is never violated. Whatever else happens, the glyphs must read
-    #      around the wheel in the same sequence as the planets do around the
-    #      zodiac. Drawing Venus before Neptune when it is actually after is a
-    #      worse lie than drawing it a few degrees off.
-    #   2. Angle is preserved where possible. Collisions are resolved by pushing
-    #      outward along the same ray, which costs only depth; sliding sideways
-    #      is the last resort because it is what spends angle.
-    #
-    # Rule 1 is enforced by cutting the cycle at its widest gap, unwrapping to a
-    # line, and requiring the placed angles to stay non-decreasing along it.
+    # --- order and unwrap ----------------------------------------------------
     entries = [(b, to_screen_angle(positions[b]['lon']))
                for b in bodies if b in positions]
     n = len(entries)
-    entries.sort(key=lambda e: e[1] % (2 * math.pi))
-    gaps = [((entries[(i + 1) % n][1] - entries[i][1]) % (2 * math.pi)) for i in range(n)]
+    TWO_PI = 2 * math.pi
+    entries.sort(key=lambda e: e[1] % TWO_PI)
+    gaps = [((entries[(i + 1) % n][1] - entries[i][1]) % TWO_PI) for i in range(n)]
     cut = max(range(n), key=lambda i: gaps[i])
     entries = entries[cut + 1:] + entries[:cut + 1]
-
     base = entries[0][1]
-    trues = [base + ((th - base) % (2 * math.pi)) for _, th in entries]
+    trues = [base + ((th - base) % TWO_PI) for _, th in entries]
+    pieces = [pieces_for(b) for b, _ in entries]
 
-    def is_axis(body):
-        return body in ('ascendant', 'medium_coeli')
-
-    # Candidates for each label, cheapest first. Angle is weighted far above
-    # radius, and the axes are weighted higher still so they effectively never
-    # move -- they are the marks everything else is read against.
-    all_candidates = []
-    for i, (body, _) in enumerate(entries):
-        box = ANGLE_BOX if is_axis(body) else GLYPH_BOX
-        weight = 8.0 if is_axis(body) else 1.0
-        near0 = r_bounds(trues[i], box)[0]
-        cands = []
-        for si in range(int(ANGLE_LIMIT / ANGLE_STEP) + 1):
-            for sgn in ((0,) if si == 0 else (1, -1)):
-                d_deg = sgn * si * ANGLE_STEP
-                theta = trues[i] + math.radians(d_deg)
-                lo, hi = r_bounds(theta, box)
-                r = lo
-                while r <= hi + 0.5:
-                    cands.append((weight * abs(d_deg) + RADIAL_COST * (r - near0), theta, r))
-                    r += RADIAL_STEP
-        cands.sort(key=lambda c: c[0])
-        all_candidates.append(cands)
-
-    def best_spot(i, lower, upper, others, pad):
-        """Cheapest collision-free spot for label i with its angle in bounds."""
-        box = ANGLE_BOX if is_axis(entries[i][0]) else GLYPH_BOX
-        for cost, theta, r in all_candidates[i]:
-            if theta < lower - 1e-9 or theta > upper + 1e-9:
-                continue
-            cx = wheel_cx + r * math.cos(theta)
-            cy = wheel_cy - r * math.sin(theta)
-            rect = box_at(cx, cy, box)
-            if not any(_overlaps(rect, o, pad) for o in others):
-                return (cost, theta, r, cx, cy, rect)
-        return None
-
-    TWO_PI = 2 * math.pi
-    slots = [None] * n
-    for pad in (LABEL_PAD, 0):
-        placed_rects = []
-        ok = True
-        lower = -1e9
+    # --- spread --------------------------------------------------------------
+    # Classic 1-D label spreading: overlapping runs merge into clusters, and each
+    # cluster sits where its members' mean displacement is zero. The gap a pair
+    # needs depends on where on the wheel it sits (a column is wide across a
+    # vertical ray and narrow across a horizontal one), so gaps are re-measured
+    # at the placed angles until they stop changing.
+    def spread(req):
+        clusters = []            # [start, end, pos_of_start]
         for i in range(n):
-            upper = trues[0] + TWO_PI - 1e-6 if i == n - 1 else 1e9
-            spot = best_spot(i, lower, upper, placed_rects, pad)
-            if spot is None:
-                ok = False
-                break
-            slots[i] = spot
-            placed_rects.append(spot[5])
-            lower = spot[1]              # keeps the sequence non-decreasing
-        if ok:
+            clusters.append([i, i, trues[i]])
+            while len(clusters) > 1:
+                a, b = clusters[-2], clusters[-1]
+                a_end = a[2] + sum(req[a[0]:a[1]])
+                if a_end + req[a[1]] <= b[2]:
+                    break
+                start, end = a[0], b[1]
+                offs, acc = [], 0.0
+                for k in range(start, end + 1):
+                    offs.append(acc)
+                    if k < end:
+                        acc += req[k]
+                p = sum(trues[k] - offs[k - start] for k in range(start, end + 1)) / len(offs)
+                clusters[-2:] = [[start, end, p]]
+        out = []
+        for st, en, p in clusters:
+            acc = 0.0
+            for k in range(st, en + 1):
+                out.append(p + acc)
+                if k < en:
+                    acc += req[k]
+        return out
+
+    placed = list(trues)
+    req = [0.0] * n
+    for _ in range(6):
+        new_req = [required_gap(pieces[i], pieces[i + 1], (placed[i] + placed[i + 1]) / 2)
+                   for i in range(n - 1)] + [0.0]
+        req = [max(a, b) for a, b in zip(req, new_req)]
+        placed = spread(req)
+        if all(not columns_clash(pieces[i], placed[i], pieces[i + 1], placed[i + 1])
+               for i in range(n - 1)):
             break
-    else:
-        # Nothing fits even touching: fall back to true angles at max radius.
-        for i, (body, _) in enumerate(entries):
-            box = ANGLE_BOX if is_axis(body) else GLYPH_BOX
-            r = r_bounds(trues[i], box)[1]
-            cx = wheel_cx + r * math.cos(trues[i])
-            cy = wheel_cy - r * math.sin(trues[i])
-            slots[i] = (0, trues[i], r, cx, cy, box_at(cx, cy, box))
 
-    # The forward pass can only push a crowded run one way. Sweep back and forth
-    # letting each label return toward its true angle as far as its neighbours
-    # allow; the monotonic bounds keep the order intact throughout.
-    for _ in range(3):
-        for order in (range(n - 1, -1, -1), range(n)):
-            for i in order:
-                lower = slots[i - 1][1] if i > 0 else trues[0] - TWO_PI + 1e-6
-                upper = slots[i + 1][1] if i < n - 1 else trues[0] + TWO_PI - 1e-6
-                others = [s[5] for j, s in enumerate(slots) if j != i]
-                spot = best_spot(i, lower, upper, others, LABEL_PAD)
-                if spot is not None and spot[0] < slots[i][0] - 1e-9:
-                    slots[i] = spot
+    # --- wheel -----------------------------------------------------------------
+    for r, sw in ((outer_r, 2), (inner_r, 2), (hub_r, 1)):
+        dwg.add(dwg.circle(center=(wheel_cx, wheel_cy), r=r,
+                           stroke='black', stroke_width=sw, fill='none'))
+    asc_sign = positions.get('ascendant', {}).get('sign', 0)
+    for i in range(12):
+        a = to_screen_angle(i * 30)
+        ca, sa = math.cos(a), -math.sin(a)
+        dwg.add(dwg.line(start=(wheel_cx + inner_r * ca, wheel_cy + inner_r * sa),
+                         end=(wheel_cx + outer_r * ca, wheel_cy + outer_r * sa),
+                         stroke='black', stroke_width=1.5))
+        # House cusps (whole sign) run faintly through the label field.
+        dwg.add(dwg.line(start=(wheel_cx + hub_r * ca, wheel_cy + hub_r * sa),
+                         end=(wheel_cx + inner_r * ca, wheel_cy + inner_r * sa),
+                         stroke=LIGHT_GRAY, stroke_width=1))
+        mid = to_screen_angle(i * 30 + 15)
+        dwg.add(dwg.text(SIGN_GLYPHS[i],
+                         insert=(wheel_cx + sign_glyph_r * math.cos(mid),
+                                 wheel_cy - sign_glyph_r * math.sin(mid) + 0.30 * SIGN_GLYPH_SIZE),
+                         text_anchor='middle', font_size=f'{SIGN_GLYPH_SIZE}px',
+                         font_family=GLYPH_FONT, fill='black'))
+        if show_house_numbers:
+            hr = hub_r - 12
+            house = get_house_number(i, asc_sign)
+            dwg.add(dwg.text(str(house),
+                             insert=(wheel_cx + hr * math.cos(mid),
+                                     wheel_cy - hr * math.sin(mid) + 0.37 * 12),
+                             text_anchor='middle', font_size='12px',
+                             font_family=TEXT_FONT, fill=DARK_GRAY))
 
-    placed = {entries[i][0]: (slots[i][1], slots[i][2], slots[i][3], slots[i][4])
-              for i in range(n)}
-
-    # --- ticks, leaders, glyphs -------------------------------------------
-    for body, true_angle in entries:
-        theta, r, lx, ly = placed[body]
-        is_angle = body in ('ascendant', 'medium_coeli')
-        box = ANGLE_BOX if is_angle else GLYPH_BOX
-
-        tx1 = wheel_cx + outer_r * math.cos(true_angle)
-        ty1 = wheel_cy - outer_r * math.sin(true_angle)
-        tx2 = wheel_cx + tick_outer * math.cos(true_angle)
-        ty2 = wheel_cy - tick_outer * math.sin(true_angle)
-        dwg.add(dwg.line(start=(tx1, ty1), end=(tx2, ty2),
-                         stroke='black', stroke_width=2))
-
-        # Aim the leader at the glyph itself rather than at a radius along its
-        # ray. Those differ whenever a glyph is displaced sideways at a small
-        # radius, and the ray version then degenerates into a stub skimming the
-        # rim, pointing tens of degrees away from what it is supposed to label.
-        vx, vy = lx - tx2, ly - ty2
-        span = math.hypot(vx, vy)
-        lateral = abs(r * math.sin(theta - true_angle))
-        if span > 1e-6:
-            ux, uy = -vx / span, -vy / span
-            inset = _box_exit(box, ux, uy) + 3
-            clear = span - inset
-            if lateral > LEADER_MIN_LATERAL or clear > LEADER_MIN_GAP:
-                if clear > 2:
-                    dwg.add(dwg.line(start=(tx2, ty2),
-                                     end=(lx + ux * inset, ly + uy * inset),
-                                     stroke=DARK_GRAY, stroke_width=1))
-
-        deg_text = f"{positions[body]['deg']}\u00B0"
-        if is_angle:
-            name = 'ASC' if body == 'ascendant' else 'MC'
-            dwg.add(dwg.text(name, insert=(lx + NAME_DX, ly + NAME_BASELINE),
-                             text_anchor=GLYPH_ANCHOR,
-                             font_size=f'{ANGLE_SIZE}px', font_family=TEXT_FONT,
-                             fill='black', font_weight='bold'))
-            dwg.add(dwg.text(deg_text, insert=(lx + ANGLE_DEG_DX, ly + ANGLE_DEG_BASELINE),
-                             text_anchor=DEGREE_ANCHOR, font_size=f'{DEGREE_SIZE}px',
-                             font_family=TEXT_FONT, fill='black'))
-        else:
-            dwg.add(dwg.text(BODY_GLYPHS[body], insert=(lx + GLYPH_DX, ly + GLYPH_BASELINE),
-                             text_anchor=GLYPH_ANCHOR, font_size=f'{GLYPH_SIZE}px',
-                             font_family=GLYPH_FONT, fill='black'))
-            dwg.add(dwg.text(deg_text, insert=(lx + DEGREE_DX, ly + DEGREE_BASELINE),
-                             text_anchor=DEGREE_ANCHOR, font_size=f'{DEGREE_SIZE}px',
-                             font_family=TEXT_FONT, fill='black'))
+    # --- columns ---------------------------------------------------------------
+    for i, (body, true_angle) in enumerate(entries):
+        theta = placed[i]
+        displaced = abs(theta - true_angle) > math.radians(0.75)
+        c1, s1 = math.cos(true_angle), -math.sin(true_angle)
+        tx2 = wheel_cx + (inner_r - TICK) * c1
+        ty2 = wheel_cy + (inner_r - TICK) * s1
+        dwg.add(dwg.line(start=(wheel_cx + inner_r * c1, wheel_cy + inner_r * s1),
+                         end=(tx2, ty2), stroke='black', stroke_width=2))
+        column = layout_column(pieces[i], theta, True)
+        if displaced:
+            ex = wheel_cx + (inner_r - TICK - 6) * math.cos(theta)
+            ey = wheel_cy - (inner_r - TICK - 6) * math.sin(theta)
+            dwg.add(dwg.line(start=(tx2, ty2), end=(ex, ey),
+                             stroke=DARK_GRAY, stroke_width=1))
+        for p, cx, cy, _ in column:
+            text, font, size, bold, w, h, base_off = p
+            kw = {'font_weight': 'bold'} if bold else {}
+            dwg.add(dwg.text(text, insert=(cx, cy + base_off), text_anchor='middle',
+                             font_size=f'{size}px', font_family=font, fill='black', **kw))
 
     # === RIGHT SIDE: Legend panel (unchanged) ===
-    legend_x = 435
+    legend_x = 488
     legend_y_start = 32       # baseline; 15 put the cap-height above the canvas
     line_height = 30
     # Astronomicon sets smaller than a text face at the same nominal size, so the
@@ -428,7 +321,7 @@ def render(positions, config):
             dwg.add(dwg.path(d=_moon_path(mcx, mcy, mr, moon_idx),
                              fill='black', stroke='none'))
     dwg.add(dwg.line(start=(legend_x, legend_y_start + 12),
-                     end=(legend_x + 340, legend_y_start + 12),
+                     end=(legend_x + 300, legend_y_start + 12),
                      stroke='black', stroke_width=1))
 
     y = legend_y_start + 40
@@ -458,8 +351,8 @@ def render(positions, config):
 
     now_local = datetime.now(ZoneInfo(location['timezone']))
     stamp = f"{now_local.strftime('%B %d %Y')} {now_local.strftime('%-I:%M %p').lower()}"
-    dwg.add(dwg.text(f"[DEV] {location['name']} | {stamp}", insert=(legend_x + 170, 468),
-                     text_anchor='middle', font_size='14px',
+    dwg.add(dwg.text(f"[DEV] {location['name']} | {stamp}", insert=(796, 468),
+                     text_anchor='end', font_size='14px',
                      font_family=TEXT_FONT, fill=DARK_GRAY))
 
     return dwg.tostring()

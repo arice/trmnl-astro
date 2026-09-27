@@ -386,38 +386,25 @@ def render(positions, config):
     dwg.add(dwg.line(start=(panel_x, header_y + 12), end=(panel_right, header_y + 12),
                      stroke='black', stroke_width=1))
 
-    # -- rows: the next lunation, the next ingress or station, and the Moon's
-    #    next aspect come first; then everything else in date order. Moon
-    #    ingresses and Sun-Moon aspects are dropped as noise (the lunations
-    #    already cover the conjunction and opposition).
+    # -- rows: one chronological list. Lunations and planetary events appear
+    #    as they come; of the Moon's own aspects only the next one is kept (it
+    #    gets a time, being hours away, where the rest get a date), and Moon
+    #    ingresses and Sun-Moon aspects are dropped as noise - the lunations
+    #    already cover the conjunction and opposition.
     def is_noise(e):
         if e['kind'] == 'aspect' and {e['body'], e['other']} == {'sun', 'moon'}:
             return True
         return e['kind'] in ('ingress', 'aspect') and e['body'] == 'moon'
 
-    lead = []
-    nxt = next((e for e in events if e['kind'] == 'lunation'), None)
-    if nxt:
-        lead.append((nxt, False))
-    nxt = next((e for e in events if e['kind'] in ('ingress', 'station') and e['body'] != 'moon'), None)
-    if nxt:
-        lead.append((nxt, False))
-    nxt = next((e for e in events if e['kind'] == 'aspect' and e['body'] == 'moon'
-                and e['other'] != 'sun'), None)
-    if nxt:
-        lead.append((nxt, True))
-    shown = {id(e) for e, _ in lead}
-    rest = [(e, False) for e in events if not is_noise(e) and id(e) not in shown]
+    next_moon = next((e for e in events if e['kind'] == 'aspect' and e['body'] == 'moon'
+                      and e['other'] != 'sun'), None)
+    rows = [(e, e is next_moon) for e in events if e is next_moon or not is_noise(e)]
 
     y = header_y + 40
     bottom = 450
-    for i, (e, with_time) in enumerate(lead + rest):
+    for e, with_time in rows:
         if y > bottom:
             break
-        if i == len(lead) and lead:
-            dwg.add(dwg.line(start=(panel_x, y - ROW + 8), end=(panel_right, y - ROW + 8),
-                             stroke=LIGHT_GRAY, stroke_width=1))
-            y += 6
         dwg.add(dwg.text(when_text(e, with_time), insert=(panel_x + 2, y),
                          font_size='14px', font_family=TEXT_FONT, fill=DARK_GRAY))
         draw_pieces(panel_x + DATE_W, y, describe(e))

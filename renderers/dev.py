@@ -313,7 +313,7 @@ def render(positions, config):
     ROW = 26
     ROW_SIZE = 18
     ROW_GLYPH = 24          # Astronomicon sets small; step it up to match the text
-    DATE_W = 90             # date column
+    DATE_W = 130            # date + local time column ("Sep 30 11:44pm")
     tz = ZoneInfo(location['timezone'])
     events = config.get('events') or []
 
@@ -357,7 +357,8 @@ def render(positions, config):
         dwg.add(t)
 
     def when_text(e):
-        return e['when'].astimezone(tz).strftime('%b %-d')
+        local = e['when'].astimezone(tz)
+        return local.strftime('%b %-d %-I:%M%p').replace('AM', 'am').replace('PM', 'pm')
 
     # -- header: Moon phase and illumination, the one "now" fact worth a line --
     moon_idx = get_moon_phase(positions) if show_moon_phase else None

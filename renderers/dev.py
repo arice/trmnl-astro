@@ -406,9 +406,15 @@ def render(positions, config):
         draw_pieces(panel_x + DATE_W, y, describe(e))
         y += ROW
 
+    # Date and time in the top-left corner, where the wheel's curve leaves a
+    # wedge free (the rim is ~150px in at y=20, ~125px at y=38). The footer
+    # keeps only the location.
     now_local = datetime.now(ZoneInfo(location['timezone']))
-    stamp = f"{now_local.strftime('%B %d %Y')} {now_local.strftime('%-I:%M %p').lower()}"
-    dwg.add(dwg.text(f"[DEV] {location['name']} | {stamp}", insert=(796, 468),
+    dwg.add(dwg.text(now_local.strftime('%a %b %-d'), insert=(8, 22),
+                     font_size='16px', font_family=TEXT_FONT, fill='black', font_weight='bold'))
+    dwg.add(dwg.text(now_local.strftime('%-I:%M %p').lower(), insert=(8, 42),
+                     font_size='16px', font_family=TEXT_FONT, fill='black'))
+    dwg.add(dwg.text(f"[DEV] {location['name']}", insert=(796, 468),
                      text_anchor='end', font_size='14px',
                      font_family=TEXT_FONT, fill=DARK_GRAY))
 

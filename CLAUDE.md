@@ -46,7 +46,7 @@ The renderers create custom astrological wheel charts:
 
 **Layout (800x480):**
 - Left side: Zodiac wheel (center at 220, 240)
-- Right side: Legend panel with all 13 bodies + degrees
+- Right side: upcoming events panel (Moon phase header, then lunations, ingresses, stations and exact aspects in date order, as many as fit)
 
 **Wheel structure:**
 - `outer_r` (175): Outer edge of sign ring

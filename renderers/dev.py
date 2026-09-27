@@ -411,9 +411,9 @@ def render(positions, config):
     # keeps only the location.
     now_local = datetime.now(ZoneInfo(location['timezone']))
     dwg.add(dwg.text(now_local.strftime('%a %b %-d'), insert=(8, 22),
-                     font_size='16px', font_family=TEXT_FONT, fill='black', font_weight='bold'))
+                     font_size='15px', font_family=TEXT_FONT, fill=DARK_GRAY))
     dwg.add(dwg.text(now_local.strftime('%-I:%M %p').lower(), insert=(8, 42),
-                     font_size='16px', font_family=TEXT_FONT, fill='black'))
+                     font_size='15px', font_family=TEXT_FONT, fill=DARK_GRAY))
     dwg.add(dwg.text(f"[DEV] {location['name']}", insert=(796, 468),
                      text_anchor='end', font_size='14px',
                      font_family=TEXT_FONT, fill=DARK_GRAY))

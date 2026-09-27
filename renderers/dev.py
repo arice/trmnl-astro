@@ -356,11 +356,8 @@ def render(positions, config):
                             font_size=f'{size}px', font_family=font))
         dwg.add(t)
 
-    def when_text(e, with_time):
-        local = e['when'].astimezone(tz)
-        if with_time:
-            return local.strftime('%a %-I:%M%p').replace('AM', 'am').replace('PM', 'pm')
-        return local.strftime('%b %-d')
+    def when_text(e):
+        return e['when'].astimezone(tz).strftime('%b %-d')
 
     # -- header: Moon phase and illumination, the one "now" fact worth a line --
     moon_idx = get_moon_phase(positions) if show_moon_phase else None
@@ -387,9 +384,8 @@ def render(positions, config):
                      stroke='black', stroke_width=1))
 
     # -- rows: one chronological list. Lunations and planetary events appear
-    #    as they come; of the Moon's own aspects only the next one is kept (it
-    #    gets a time, being hours away, where the rest get a date), and Moon
-    #    ingresses and Sun-Moon aspects are dropped as noise - the lunations
+    #    as they come; of the Moon's own aspects only the next one is kept, and
+    #    Moon ingresses and Sun-Moon aspects are dropped as noise - the lunations
     #    already cover the conjunction and opposition.
     def is_noise(e):
         if e['kind'] == 'aspect' and {e['body'], e['other']} == {'sun', 'moon'}:
@@ -398,14 +394,14 @@ def render(positions, config):
 
     next_moon = next((e for e in events if e['kind'] == 'aspect' and e['body'] == 'moon'
                       and e['other'] != 'sun'), None)
-    rows = [(e, e is next_moon) for e in events if e is next_moon or not is_noise(e)]
+    rows = [e for e in events if e is next_moon or not is_noise(e)]
 
     y = header_y + 40
     bottom = 450
-    for e, with_time in rows:
+    for e in rows:
         if y > bottom:
             break
-        dwg.add(dwg.text(when_text(e, with_time), insert=(panel_x + 2, y),
+        dwg.add(dwg.text(when_text(e), insert=(panel_x + 2, y),
                          font_size='14px', font_family=TEXT_FONT, fill=DARK_GRAY))
         draw_pieces(panel_x + DATE_W, y, describe(e))
         y += ROW

@@ -385,17 +385,29 @@ def render(positions, config):
                      stroke='black', stroke_width=1))
 
     # -- rows: one chronological list. Lunations and planetary events appear
-    #    as they come; of the Moon's own aspects only the next one is kept, and
-    #    Moon ingresses and Sun-Moon aspects are dropped as noise - the lunations
-    #    already cover the conjunction and opposition.
+    #    as they come; of the Moon's own aspects only two are kept - the next
+    #    one to any planet, and the next one to a traditional planet (often the
+    #    same event) - and Moon ingresses and other Sun-Moon aspects are dropped
+    #    as noise. A Sun-Moon conjunction or opposition is already a lunation
+    #    row, so when that is the next traditional aspect it needs no row of its own.
+    TRADITIONAL = {'sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'}
+
     def is_noise(e):
         if e['kind'] == 'aspect' and {e['body'], e['other']} == {'sun', 'moon'}:
             return True
         return e['kind'] in ('ingress', 'aspect') and e['body'] == 'moon'
 
-    next_moon = next((e for e in events if e['kind'] == 'aspect' and e['body'] == 'moon'
-                      and e['other'] != 'sun'), None)
-    rows = [e for e in events if e is next_moon or not is_noise(e)]
+    def moon_partner(e):
+        if e['kind'] != 'aspect' or 'moon' not in (e['body'], e['other']):
+            return None
+        return e['other'] if e['body'] == 'moon' else e['body']
+
+    next_moon = next((e for e in events if moon_partner(e) not in (None, 'sun')), None)
+    next_trad = next((e for e in events if moon_partner(e) in TRADITIONAL), None)
+    if next_trad and moon_partner(next_trad) == 'sun' and next_trad['angle'] in (0, 180):
+        next_trad = None
+    keep = [e for e in (next_moon, next_trad) if e]
+    rows = [e for e in events if any(e is k for k in keep) or not is_noise(e)]
 
     y = header_y + 40
     bottom = 450

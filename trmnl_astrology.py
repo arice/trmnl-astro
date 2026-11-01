@@ -86,6 +86,9 @@ def get_positions():
     CHART_PAYLOAD["subject"]["day"] = now.day
     CHART_PAYLOAD["subject"]["hour"] = now.hour
     CHART_PAYLOAD["subject"]["minute"] = now.minute
+    # The 1 AM hour repeats when clocks fall back, and the API rejects it as
+    # ambiguous unless told which one we mean. now.dst() already knows.
+    CHART_PAYLOAD["subject"]["is_dst"] = bool(now.dst())
 
     print(f"Time ({LOCATION['name']}): {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
 
@@ -183,7 +186,7 @@ def send_to_trmnl():
     payload = {
         "merge_variables": {
             "chart_url": image_url,
-            "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M EST")
+            "updated_at": datetime.now(ZoneInfo(LOCATION['timezone'])).strftime("%Y-%m-%d %H:%M %Z")
         }
     }
 

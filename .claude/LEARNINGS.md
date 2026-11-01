@@ -211,6 +211,12 @@ Gotchas only. Non-obvious constraints and mistakes worth not repeating.
   all of it locally with pyswisseph in Moshier mode (`FLG_MOSEPH`), which needs no ephemeris
   files; Chiron is the exception (needs `seas_18.se1`), so it is not offered.
 
+- **The subject time is wall-clock local, so the fall-back hour is ambiguous.** Without
+  `is_dst` in `subject`, every request from 1:00 to 1:59 AM on the November DST change
+  returns 400 "Ambiguous time error" (two hours of failed runs on 2026-11-01).
+  `get_positions()` now sends `is_dst=bool(now.dst())`. Spring-forward has no such gap:
+  the cron's `now` is always a real local time.
+
 ## Workflow
 
 - Test PNGs (`test_chart_*.png`) are gitignored — they will never show in `git status`.

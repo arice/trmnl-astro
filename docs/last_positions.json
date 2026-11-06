@@ -1,114 +1,114 @@
 {
   "sun": {
-    "lon": 223.70539060410545,
+    "lon": 223.70956960773978,
     "sign": 7,
     "deg": 13,
     "min": 42,
     "retrograde": false
   },
   "moon": {
-    "lon": 186.64961764616328,
+    "lon": 186.70365076420504,
     "sign": 6,
     "deg": 6,
-    "min": 38,
+    "min": 42,
     "retrograde": false
   },
   "mercury": {
-    "lon": 220.2319312286924,
+    "lon": 220.22676350252436,
     "sign": 7,
     "deg": 10,
     "min": 13,
     "retrograde": true
   },
   "venus": {
-    "lon": 204.13481545039676,
+    "lon": 204.13348181306435,
     "sign": 6,
     "deg": 24,
     "min": 8,
     "retrograde": true
   },
   "mars": {
-    "lon": 141.15664781799143,
+    "lon": 141.15867307658385,
     "sign": 4,
     "deg": 21,
     "min": 9,
     "retrograde": false
   },
   "jupiter": {
-    "lon": 144.91444721883764,
+    "lon": 144.91490220640836,
     "sign": 4,
     "deg": 24,
     "min": 54,
     "retrograde": false
   },
   "saturn": {
-    "lon": 8.979067233552165,
+    "lon": 8.97883000509513,
     "sign": 0,
     "deg": 8,
     "min": 58,
     "retrograde": true
   },
   "uranus": {
-    "lon": 64.48438135075716,
+    "lon": 64.48422117052792,
     "sign": 2,
     "deg": 4,
     "min": 29,
     "retrograde": true
   },
   "neptune": {
-    "lon": 1.9814445323348342,
+    "lon": 1.9813653180157023,
     "sign": 0,
     "deg": 1,
     "min": 58,
     "retrograde": true
   },
   "pluto": {
-    "lon": 303.173141530636,
+    "lon": 303.17318288996114,
     "sign": 10,
     "deg": 3,
     "min": 10,
     "retrograde": false
   },
   "mean_north_lunar_node": {
-    "lon": 325.80233742756144,
+    "lon": 325.80211666834754,
     "sign": 10,
     "deg": 25,
     "min": 48,
     "retrograde": true
   },
   "mean_south_lunar_node": {
-    "lon": 145.80233742756144,
+    "lon": 145.80211666834754,
     "sign": 4,
     "deg": 25,
     "min": 48,
     "retrograde": true
   },
   "ascendant": {
-    "lon": 119.52195983282402,
-    "sign": 3,
-    "deg": 29,
-    "min": 31,
+    "lon": 120.72246338864625,
+    "sign": 4,
+    "deg": 0,
+    "min": 43,
     "retrograde": false
   },
   "medium_coeli": {
-    "lon": 14.85987191889525,
+    "lon": 16.48030377342104,
     "sign": 0,
-    "deg": 14,
-    "min": 51,
+    "deg": 16,
+    "min": 28,
     "retrograde": false
   },
   "descendant": {
-    "lon": 299.521959832824,
-    "sign": 9,
-    "deg": 29,
-    "min": 31,
+    "lon": 300.72246338864625,
+    "sign": 10,
+    "deg": 0,
+    "min": 43,
     "retrograde": false
   },
   "imum_coeli": {
-    "lon": 194.85987191889524,
+    "lon": 196.48030377342104,
     "sign": 6,
-    "deg": 14,
-    "min": 51,
+    "deg": 16,
+    "min": 28,
     "retrograde": false
   }
 }

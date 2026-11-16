@@ -226,3 +226,15 @@ Gotchas only. Non-obvious constraints and mistakes worth not repeating.
   waiting for the next cron tick. Note it also pushes a webhook to the live TRMNL device.
 - **`docs/` is the GitHub Pages publish root.** Anything dropped there — dev logs included —
   is served publicly at `arice.github.io/trmnl-astro/`. It is not a private docs folder.
+
+## CI / workflow
+
+- **A dispatched run builds on the commit `main` was at when it was *dispatched*, not when
+  it starts.** GitHub sometimes holds `workflow_dispatch` runs in its queue for an hour
+  (measured 2026-11-16: dispatched 16:54, started 18:01). By then other runs have pushed
+  chart commits, so a plain `git push` is rejected with "fetch first" and a failure email
+  goes out. Any number of runs can be affected per day; they cluster with GitHub's queue
+  delays, not with code changes. Fix in the workflow: a `concurrency` group, and a push step
+  that saves the rendered files, `reset --hard origin/main`, copies them back, commits and
+  retries. Avoid `pull --rebase` (PNG conflicts) and `reset --soft` (silently reverts code
+  committed since the dispatch).

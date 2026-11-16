@@ -1,12 +1,21 @@
 name: Update TRMNL Transit Chart
 
 on:
+  # Best-effort fallback only. The real trigger is the droplet cron
+  # (~/bin/trmnl-dispatch.sh), which calls workflow_dispatch every 6 minutes.
   schedule:
-    # Run every 5 minutes
     - cron: '*/5 * * * *'
-  
-  # Allow manual triggering
+
   workflow_dispatch:
+
+# One run at a time. GitHub sometimes holds dispatched runs in its queue for
+# an hour, then releases several together; they used to race each other to
+# push and the losers failed. With this group a newer queued run replaces an
+# older one still waiting, which is what we want: every run renders "now".
+# cancel-in-progress stays false so a run is never killed mid-push.
+concurrency:
+  group: update-chart
+  cancel-in-progress: false
 
 jobs:
   update-chart:
@@ -47,11 +56,38 @@ jobs:
       # Commit whatever rendered, even if a later step failed. The charts are
       # written before the TRMNL push, so a webhook problem should never be the
       # reason the display goes stale.
+      #
+      # A dispatched run checks out the commit main was on when it was
+      # *dispatched*, not when it starts. A run that sat in the queue is
+      # therefore behind main and a plain push is rejected. So: stash the
+      # rendered files, move onto the latest main, put them back, commit,
+      # push - and retry if another run slips in between. Not `pull --rebase`
+      # (binary PNG conflicts) and not `reset --soft` (would revert any code
+      # committed since dispatch).
       - name: Commit and push charts
         if: always()
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add docs/chart.png docs/dev-chart.png docs/last_positions.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update chart: $(date '+%Y-%m-%d %H:%M UTC')"
-          git push
+          FILES="docs/chart.png docs/dev-chart.png docs/last_positions.json"
+          SAVE=$(mktemp -d)
+          for f in $FILES; do [ -f "$f" ] && cp "$f" "$SAVE/"; done
+          MSG="Update chart: $(date '+%Y-%m-%d %H:%M UTC')"
+          for attempt in 1 2 3 4 5; do
+            git fetch --quiet origin main
+            git reset --quiet --hard origin/main
+            for f in $FILES; do [ -f "$SAVE/$(basename "$f")" ] && cp "$SAVE/$(basename "$f")" "$f"; done
+            git add $FILES
+            if git diff --staged --quiet; then
+              echo "Nothing changed; no commit needed."
+              exit 0
+            fi
+            git commit --quiet -m "$MSG"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push attempt $attempt rejected; retrying on the latest main."
+            sleep $((attempt * 3))
+          done
+          echo "Push failed after 5 attempts."
+          exit 1
